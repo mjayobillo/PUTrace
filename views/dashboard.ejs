@@ -1,0 +1,60 @@
+<%- include('partials_header') %>
+<section class="card">
+  <h2>Register Item</h2>
+  <form method="post" action="/dashboard">
+    <label>Item name <input name="item_name" required /></label>
+    <label>Description <textarea name="item_description" rows="3"></textarea></label>
+    <button type="submit">Generate QR</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Your Items</h2>
+  <% if (!items || items.length === 0) { %>
+    <p>No items yet.</p>
+  <% } else { %>
+    <div class="item-grid">
+      <% items.forEach((item) => { %>
+        <article class="item">
+          <h3><%= item.item_name %></h3>
+          <p><%= item.item_description || 'No description' %></p>
+          <img src="<%= item.qr_data_url %>" alt="QR" width="180" />
+          <p><a href="/download/<%= item.token %>">Download QR</a></p>
+          <p><small>Open finder reports: <%= item.open_reports %></small></p>
+          <p><small><%= baseUrl %>/found/<%= item.token %></small></p>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>Finder Reports</h2>
+  <% if (!reports || reports.length === 0) { %>
+    <p>No reports yet.</p>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr><th>Item</th><th>Finder</th><th>Message</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+      <% reports.forEach((r) => { %>
+        <tr>
+          <td><%= r.item_name %></td>
+          <td><%= r.finder_name %><br/><small><%= r.finder_email %></small></td>
+          <td><%= r.message %><% if (r.location_hint) { %><br/><small>Location: <%= r.location_hint %></small><% } %></td>
+          <td><%= r.status %></td>
+          <td>
+            <% if (r.status === 'open') { %>
+              <form method="post" action="/report/<%= r.id %>/resolve"><button type="submit">Resolve</button></form>
+            <% } else { %>
+              -
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+<%- include('partials_footer') %>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PUtrace</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <h1>PUtrace</h1>
+        <p class="sub">Node.js + Supabase Campus Recovery System</p>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <% if (currentUser) { %>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/logout">Logout</a>
+        <% } else { %>
+          <a href="/login">Login</a>
+          <a href="/signup">Sign up</a>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <% if (flash) { %>
+        <div class="flash <%= flash.type %>"><%= flash.message %></div>
+      <% } %>
