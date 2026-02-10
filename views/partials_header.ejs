@@ -8,18 +8,23 @@
   </head>
   <body>
     <header class="site-header">
-      <div>
-        <h1>PUtrace</h1>
-        <p class="sub">Node.js + Supabase Campus Recovery System</p>
+      <div class="brand">
+        <span class="logo">📍</span>
+        <div>
+          <h1>PUtrace</h1>
+          <p class="sub">Campus Item Recovery System</p>
+        </div>
       </div>
       <nav>
         <a href="/">Home</a>
+        <a href="/lost">Lost Board</a>
         <% if (currentUser) { %>
           <a href="/dashboard">Dashboard</a>
+          <a href="/account">Account</a>
           <a href="/logout">Logout</a>
         <% } else { %>
           <a href="/login">Login</a>
-          <a href="/signup">Sign up</a>
+          <a href="/signup" class="nav-cta">Sign up</a>
         <% } %>
       </nav>
     </header>
