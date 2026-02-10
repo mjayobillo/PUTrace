@@ -1,0 +1,26 @@
+<%- include('partials_header') %>
+<section class="card">
+  <h2>Found Item: <%= item.item_name %></h2>
+  <p><%= item.item_description || 'No description available.' %></p>
+  <h3>Return Instructions</h3>
+  <ol>
+    <li>Keep the item safe.</li>
+    <li>Contact owner or submit report below.</li>
+    <li>Return through campus lost-and-found office when possible.</li>
+  </ol>
+  <p><strong>Owner:</strong> <%= owner.full_name %></p>
+  <p><strong>Email:</strong> <a href="mailto:<%= owner.email %>"><%= owner.email %></a></p>
+  <% if (owner.contact_phone) { %><p><strong>Phone:</strong> <%= owner.contact_phone %></p><% } %>
+</section>
+
+<section class="card">
+  <h3>Send message to owner</h3>
+  <form method="post" action="/found/<%= item.token %>">
+    <label>Your name <input name="finder_name" required /></label>
+    <label>Your email <input type="email" name="finder_email" required /></label>
+    <label>Location found <input name="location_hint" /></label>
+    <label>Message <textarea name="message" rows="4" required></textarea></label>
+    <button type="submit">Submit report</button>
+  </form>
+</section>
+<%- include('partials_footer') %>

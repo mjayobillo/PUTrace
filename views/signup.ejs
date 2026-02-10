@@ -1,0 +1,12 @@
+<%- include('partials_header') %>
+<section class="card narrow">
+  <h2>Create account</h2>
+  <form method="post" action="/signup">
+    <label>Full name <input name="full_name" required /></label>
+    <label>Email <input type="email" name="email" required /></label>
+    <label>Password <input type="password" name="password" required minlength="8" /></label>
+    <label>Contact phone <input name="contact_phone" /></label>
+    <button type="submit">Sign up</button>
+  </form>
+</section>
+<%- include('partials_footer') %>
