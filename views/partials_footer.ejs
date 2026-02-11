@@ -3,5 +3,20 @@
       <p>&copy; 2026 PUtrace &mdash; Campus Item Recovery System</p>
       <p>Built with Node.js &amp; Supabase</p>
     </footer>
+    <script>
+      // Restore scroll position after redirect
+      (function () {
+        var scrollY = sessionStorage.getItem("scrollY");
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY, 10));
+          sessionStorage.removeItem("scrollY");
+        }
+        document.querySelectorAll("form").forEach(function (form) {
+          form.addEventListener("submit", function () {
+            sessionStorage.setItem("scrollY", window.scrollY);
+          });
+        });
+      })();
+    </script>
   </body>
 </html>

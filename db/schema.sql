@@ -5,7 +5,6 @@ create table if not exists public.users (
   full_name text not null,
   email text not null unique,
   password_hash text not null,
-  contact_phone text,
   created_at timestamptz not null default now()
 );
 

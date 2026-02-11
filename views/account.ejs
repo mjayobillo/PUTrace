@@ -21,10 +21,6 @@
         <span class="info-value"><%= currentUser.email %></span>
       </div>
       <div class="info-row">
-        <span class="info-label">Phone</span>
-        <span class="info-value"><%= phone || 'Not set' %></span>
-      </div>
-      <div class="info-row">
         <span class="info-label">Member Since</span>
         <span class="info-value"><%= new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
       </div>
@@ -34,7 +30,6 @@
       <h3>Update Profile</h3>
       <form method="post" action="/account">
         <label>Full name <input name="full_name" value="<%= currentUser.full_name %>" required /></label>
-        <label>Contact phone <input name="contact_phone" value="<%= phone || '' %>" placeholder="09XX XXX XXXX" /></label>
         <button type="submit" class="btn-sm">Save Changes</button>
       </form>
 

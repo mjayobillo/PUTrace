@@ -5,6 +5,8 @@ const session = require("express-session");
 const bcrypt = require("bcryptjs");
 const QRCode = require("qrcode");
 const multer = require("multer");
+const nodemailer = require("nodemailer");
+const sharp = require("sharp");
 const { createClient } = require("@supabase/supabase-js");
 require("dotenv").config();
 
@@ -17,6 +19,54 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const supabase = createClient(process.env.SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 
 const CATEGORIES = ["Electronics", "ID / Cards", "Clothing", "Bags", "Bottles", "Books", "Accessories", "Keys", "Other"];
+
+// ── Email Transporter ──
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER || "",
+    pass: process.env.SMTP_PASS || ""
+  }
+});
+
+async function sendEmail(to, subject, html) {
+  if (!process.env.SMTP_USER) return; // skip if email not configured
+  try {
+    await transporter.sendMail({
+      from: `"PUtrace" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html
+    });
+  } catch (err) {
+    console.error("Email send failed:", err.message);
+  }
+}
+
+// ── Validation Helpers ──
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function sanitize(str) {
+  return (str || "").trim();
+}
+
+function isValidEmail(email) {
+  return EMAIL_RE.test(email);
+}
+
+function isValidName(name) {
+  return name.length >= 2 && name.length <= 100;
+}
+
+function isValidItemName(name) {
+  return name.length >= 1 && name.length <= 150;
+}
+
+function isValidMessage(msg) {
+  return msg.length >= 3 && msg.length <= 2000;
+}
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -67,10 +117,20 @@ app.get("/", (req, res) => {
 app.get("/signup", (req, res) => res.render("signup"));
 
 app.post("/signup", async (req, res) => {
-  const { full_name, email, password, contact_phone } = req.body;
+  const full_name = sanitize(req.body.full_name);
+  const email = sanitize(req.body.email);
+  const password = req.body.password || "";
 
-  if (!full_name || !email || !password || password.length < 8) {
-    setFlash(req, "error", "Provide full name, email, and password (8+ chars).");
+  if (!isValidName(full_name)) {
+    setFlash(req, "error", "Full name must be 2–100 characters.");
+    return res.redirect("/signup");
+  }
+  if (!isValidEmail(email)) {
+    setFlash(req, "error", "Please enter a valid email address.");
+    return res.redirect("/signup");
+  }
+  if (password.length < 8) {
+    setFlash(req, "error", "Password must be at least 8 characters.");
     return res.redirect("/signup");
   }
 
@@ -85,8 +145,7 @@ app.post("/signup", async (req, res) => {
   const { error } = await supabase.from("users").insert({
     full_name,
     email: email.toLowerCase(),
-    password_hash,
-    contact_phone: contact_phone || null
+    password_hash
   });
 
   if (error) {
@@ -183,10 +242,16 @@ app.get("/dashboard", requireAuth, async (req, res) => {
 });
 
 app.post("/dashboard", requireAuth, upload.single("image"), async (req, res) => {
-  const { item_name, item_description, category } = req.body;
+  const item_name = sanitize(req.body.item_name);
+  const item_description = sanitize(req.body.item_description);
+  const category = req.body.category || "Other";
 
-  if (!item_name) {
-    setFlash(req, "error", "Item name is required.");
+  if (!isValidItemName(item_name)) {
+    setFlash(req, "error", "Item name is required (max 150 characters).");
+    return res.redirect("/dashboard");
+  }
+  if (item_description && item_description.length > 1000) {
+    setFlash(req, "error", "Description must be under 1000 characters.");
     return res.redirect("/dashboard");
   }
 
@@ -196,12 +261,17 @@ app.post("/dashboard", requireAuth, upload.single("image"), async (req, res) => 
 
   let image_url = null;
   if (req.file) {
-    const ext = path.extname(req.file.originalname).toLowerCase() || ".jpg";
-    const fileName = `${token}${ext}`;
+    // Compress and resize image before uploading
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+
+    const fileName = `${token}.jpg`;
     const { error: uploadErr } = await supabase.storage
       .from("item-images")
-      .upload(fileName, req.file.buffer, {
-        contentType: req.file.mimetype,
+      .upload(fileName, compressedBuffer, {
+        contentType: "image/jpeg",
         upsert: false
       });
     if (!uploadErr) {
@@ -280,16 +350,27 @@ app.get("/lost", async (req, res) => {
 });
 
 app.post("/lost/:id/sighting", async (req, res) => {
-  const { reporter_name, reporter_email, location, message } = req.body;
+  const reporter_name = sanitize(req.body.reporter_name);
+  const reporter_email = sanitize(req.body.reporter_email);
+  const location = sanitize(req.body.location);
+  const message = sanitize(req.body.message);
 
-  const { data: item } = await supabase.from("items").select("id, item_name").eq("id", req.params.id).eq("item_status", "lost").maybeSingle();
+  const { data: item } = await supabase.from("items").select("id, item_name, user_id").eq("id", req.params.id).eq("item_status", "lost").maybeSingle();
   if (!item) {
     setFlash(req, "error", "Item not found.");
     return res.redirect("/lost");
   }
 
-  if (!reporter_name || !reporter_email || !message) {
-    setFlash(req, "error", "Name, email, and message are required.");
+  if (!isValidName(reporter_name)) {
+    setFlash(req, "error", "Name must be 2–100 characters.");
+    return res.redirect("/lost");
+  }
+  if (!isValidEmail(reporter_email)) {
+    setFlash(req, "error", "Please enter a valid email address.");
+    return res.redirect("/lost");
+  }
+  if (!isValidMessage(message)) {
+    setFlash(req, "error", "Message must be 3–2000 characters.");
     return res.redirect("/lost");
   }
 
@@ -306,6 +387,25 @@ app.post("/lost/:id/sighting", async (req, res) => {
     setFlash(req, "error", `Failed to submit sighting: ${error.message}`);
   } else {
     setFlash(req, "success", `Sighting reported for "${item.item_name}". The owner has been notified!`);
+
+    // Email the owner
+    const { data: owner } = await supabase.from("users").select("email, full_name").eq("id", item.user_id).single();
+    if (owner) {
+      await sendEmail(
+        owner.email,
+        `🔔 Sighting report for "${item.item_name}" — PUtrace`,
+        `<h2>Hi ${owner.full_name.split(" ")[0]},</h2>
+         <p>Someone spotted your lost item <strong>${item.item_name}</strong>!</p>
+         <table style="border-collapse:collapse;margin:1rem 0;">
+           <tr><td style="padding:6px 12px;font-weight:bold;">Reporter</td><td style="padding:6px 12px;">${reporter_name}</td></tr>
+           <tr><td style="padding:6px 12px;font-weight:bold;">Email</td><td style="padding:6px 12px;">${reporter_email}</td></tr>
+           ${location ? `<tr><td style="padding:6px 12px;font-weight:bold;">Location</td><td style="padding:6px 12px;">${location}</td></tr>` : ""}
+           <tr><td style="padding:6px 12px;font-weight:bold;">Message</td><td style="padding:6px 12px;">${message}</td></tr>
+         </table>
+         <p><a href="${BASE_URL}/dashboard" style="background:#3a56e4;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">View in Dashboard</a></p>
+         <p style="color:#999;font-size:0.85rem;margin-top:2rem;">— PUtrace Campus Item Recovery</p>`
+      );
+    }
   }
   return res.redirect("/lost");
 });
@@ -315,19 +415,30 @@ app.get("/found/:token", async (req, res) => {
 
   if (!item) return res.status(404).render("not_found");
 
-  const { data: owner } = await supabase.from("users").select("full_name, email, contact_phone").eq("id", item.user_id).single();
+  const { data: owner } = await supabase.from("users").select("full_name, email").eq("id", item.user_id).single();
 
   return res.render("found", { item, owner });
 });
 
 app.post("/found/:token", async (req, res) => {
-  const { finder_name, finder_email, location_hint, message } = req.body;
+  const finder_name = sanitize(req.body.finder_name);
+  const finder_email = sanitize(req.body.finder_email);
+  const location_hint = sanitize(req.body.location_hint);
+  const message = sanitize(req.body.message);
 
-  const { data: item } = await supabase.from("items").select("id").eq("token", req.params.token).maybeSingle();
+  const { data: item } = await supabase.from("items").select("id, item_name, user_id").eq("token", req.params.token).maybeSingle();
   if (!item) return res.status(404).render("not_found");
 
-  if (!finder_name || !finder_email || !message) {
-    setFlash(req, "error", "Name, email, and message are required.");
+  if (!isValidName(finder_name)) {
+    setFlash(req, "error", "Name must be 2–100 characters.");
+    return res.redirect(`/found/${req.params.token}`);
+  }
+  if (!isValidEmail(finder_email)) {
+    setFlash(req, "error", "Please enter a valid email address.");
+    return res.redirect(`/found/${req.params.token}`);
+  }
+  if (!isValidMessage(message)) {
+    setFlash(req, "error", "Message must be 3–2000 characters.");
     return res.redirect(`/found/${req.params.token}`);
   }
 
@@ -346,6 +457,26 @@ app.post("/found/:token", async (req, res) => {
   }
 
   setFlash(req, "success", "Report submitted to owner.");
+
+  // Email the owner about the found item report
+  const { data: owner } = await supabase.from("users").select("email, full_name").eq("id", item.user_id).single();
+  if (owner) {
+    await sendEmail(
+      owner.email,
+      `🎉 Someone found your "${item.item_name}"! — PUtrace`,
+      `<h2>Hi ${owner.full_name.split(" ")[0]},</h2>
+       <p>Great news! Someone scanned the QR code on your item <strong>${item.item_name}</strong> and sent you a report.</p>
+       <table style="border-collapse:collapse;margin:1rem 0;">
+         <tr><td style="padding:6px 12px;font-weight:bold;">Finder</td><td style="padding:6px 12px;">${finder_name}</td></tr>
+         <tr><td style="padding:6px 12px;font-weight:bold;">Email</td><td style="padding:6px 12px;">${finder_email}</td></tr>
+         ${location_hint ? `<tr><td style="padding:6px 12px;font-weight:bold;">Location</td><td style="padding:6px 12px;">${location_hint}</td></tr>` : ""}
+         <tr><td style="padding:6px 12px;font-weight:bold;">Message</td><td style="padding:6px 12px;">${message}</td></tr>
+       </table>
+       <p><a href="${BASE_URL}/dashboard" style="background:#3a56e4;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">View in Dashboard</a></p>
+       <p style="color:#999;font-size:0.85rem;margin-top:2rem;">— PUtrace Campus Item Recovery</p>`
+    );
+  }
+
   return res.redirect(`/found/${req.params.token}`);
 });
 
@@ -368,7 +499,7 @@ app.post("/report/:id/resolve", requireAuth, async (req, res) => {
 app.get("/account", requireAuth, async (req, res) => {
   const { data: user } = await supabase
     .from("users")
-    .select("contact_phone, created_at")
+    .select("created_at")
     .eq("id", req.session.userId)
     .single();
 
@@ -386,7 +517,6 @@ app.get("/account", requireAuth, async (req, res) => {
   }
 
   res.render("account", {
-    phone: user?.contact_phone || null,
     createdAt: user?.created_at || new Date().toISOString(),
     itemCount: (items || []).length,
     openReports,
@@ -395,16 +525,16 @@ app.get("/account", requireAuth, async (req, res) => {
 });
 
 app.post("/account", requireAuth, async (req, res) => {
-  const { full_name, contact_phone } = req.body;
+  const full_name = sanitize(req.body.full_name);
 
-  if (!full_name) {
-    setFlash(req, "error", "Full name is required.");
+  if (!isValidName(full_name)) {
+    setFlash(req, "error", "Full name must be 2–100 characters.");
     return res.redirect("/account");
   }
 
   const { error } = await supabase
     .from("users")
-    .update({ full_name, contact_phone: contact_phone || null })
+    .update({ full_name })
     .eq("id", req.session.userId);
 
   if (error) {
