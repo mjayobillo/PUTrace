@@ -1,4 +1,4 @@
-# PUtrace
+# PUTrace
 
 **QR-based campus lost-item recovery system** built with Node.js, Express, and Supabase.
 

@@ -1,5 +1,5 @@
 // =============================================
-// PUtrace - Campus Lost & Found QR System
+// PUTrace - Campus Lost & Found QR System
 // Built with: Node.js, Express, EJS, Supabase
 // =============================================
 
@@ -699,5 +699,5 @@ app.get("/download/:token", requireAuth, async (req, res) => {
 // ── Start the server ──
 
 app.listen(PORT, () => {
-  console.log(`PUtrace running on port ${PORT}`);
+  console.log(`PUTrace running on port ${PORT}`);
 });

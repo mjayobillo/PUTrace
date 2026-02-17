@@ -1,7 +1,7 @@
 {
-  "name": "putrace",
+  "name": "PUTrace",
   "version": "1.0.0",
-  "description": "PUtrace - QR-based lost item recovery using Node.js and Supabase",
+  "description": "PUTrace - QR-based lost item recovery using Node.js and Supabase",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
