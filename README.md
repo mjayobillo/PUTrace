@@ -2,7 +2,7 @@
 
 **QR-based campus lost-item recovery system** built with Node.js, Express, and Supabase.
 
-Students register their valuables, print unique QR labels, and attach them to items. When someone finds a lost item, they scan the QR code and submit a report — the owner is notified instantly.
+Students register their valuables, print unique QR labels, and attach them to items. When someone finds a lost item, they scan the QR code and submit a report — the owner is notified instantly. There's also a **Found Items Board** where finders can post items they picked up so owners can claim them.
 
 ---
 
@@ -25,14 +25,15 @@ Students register their valuables, print unique QR labels, and attach them to it
 - **Auth** — sign up, login, logout with hashed passwords
 - **Item Registration** — name, description, category, optional photo upload
 - **QR Codes** — auto-generated per item; download as PNG
-- **Found Page** — public page shown when a QR code is scanned
-- **Finder Reports** — finders submit name, email, location hint, and message
+- **QR Scan Page** — public page shown when a QR code is scanned; finder submits a report
 - **Lost Board** — public listing of all items marked as "lost," with sighting reports
+- **Found Items Board** — finders post items they picked up; owners can claim them (requires login)
 - **Dashboard** — search, filter by category/status, view open reports, manage items
 - **Item Status** — toggle between *active*, *lost*, and *recovered*
 - **Report Resolution** — mark finder reports as resolved
 - **Account Management** — update display name, change password
 - **Item Deletion** — remove items and associated reports
+- **Password Visibility Toggle** — eye icon on login and signup forms
 
 ### Item Categories
 
@@ -41,22 +42,23 @@ Electronics · ID / Cards · Clothing · Bags · Bottles · Books · Accessories
 ## Project Structure
 
 ```
-server.js            Main Express app and all routes
-views/               EJS templates
-  home.ejs           Landing page
-  signup.ejs         Registration form
-  login.ejs          Login form
-  dashboard.ejs      Owner dashboard (items + reports)
-  found.ejs          Public page shown after QR scan
-  lost.ejs           Public lost-item board
-  account.ejs        Profile & password settings
-  not_found.ejs      404 page
-  partials_header.ejs  Shared header partial
-  partials_footer.ejs  Shared footer partial
-static/styles.css    Stylesheet
-db/schema.sql        Supabase SQL schema (users, items, finder_reports)
-Procfile             Render / Heroku start command
-.env                 Environment variables (not committed)
+server.js              Main Express app and all routes
+views/                 EJS templates
+  home.ejs               Landing page
+  signup.ejs             Registration form
+  login.ejs              Login form
+  dashboard.ejs          Owner dashboard (items + reports)
+  lost.ejs               Public lost-item board
+  found_qr.ejs           Page shown after QR scan
+  found_items.ejs        Found Items Board (finders post here)
+  account.ejs            Profile & password settings
+  not_found.ejs          404 page
+  _header.ejs            Shared header partial
+  _footer.ejs            Shared footer partial
+static/styles.css      Stylesheet
+db/schema.sql          Supabase SQL schema (users, items, finder_reports, found_posts)
+Procfile               Render start command
+.env                   Environment variables (not committed)
 ```
 
 ## Routes
@@ -73,8 +75,11 @@ Procfile             Render / Heroku start command
 | POST | `/dashboard` | Yes | Register new item (with optional image) |
 | GET | `/lost` | — | Public lost-item board |
 | POST | `/lost/:id/sighting` | — | Submit sighting report |
-| GET | `/found/:token` | — | Public found page (QR scan target) |
+| GET | `/found/:token` | — | QR scan page |
 | POST | `/found/:token` | — | Submit finder report |
+| GET | `/found-items` | — | Found Items Board |
+| POST | `/found-items` | — | Post a found item |
+| POST | `/found-items/:id/claim` | Yes | Claim a found item |
 | POST | `/report/:id/resolve` | Yes | Mark report as resolved |
 | GET | `/account` | Yes | Profile page |
 | POST | `/account` | Yes | Update display name |
@@ -85,11 +90,12 @@ Procfile             Render / Heroku start command
 
 ## Database Schema
 
-Three tables managed via `db/schema.sql`:
+Four tables managed via `db/schema.sql`:
 
 - **users** — `id` (uuid), `full_name`, `email` (unique), `password_hash`, `created_at`
 - **items** — `id` (uuid), `user_id` (FK), `item_name`, `item_description`, `category`, `item_status`, `image_url`, `token` (unique), `qr_data_url`, `created_at`
 - **finder_reports** — `id` (bigserial), `item_id` (FK), `finder_name`, `finder_email`, `location_hint`, `message`, `status`, `created_at`
+- **found_posts** — `id` (bigserial), `finder_name`, `finder_email`, `item_name`, `item_description`, `category`, `location_found`, `image_url`, `status`, `created_at`
 
 ## Environment Variables
 
@@ -134,4 +140,5 @@ The app will be available at `http://localhost:5000`.
 2. Each student registers at least one valuable item.
 3. Print and attach QR labels to items.
 4. Simulate the lost/found flow by scanning a QR code.
-5. Measure recovery response rate and turnaround time.
+5. Test the Found Items Board by posting and claiming items.
+6. Measure recovery response rate and turnaround time.
