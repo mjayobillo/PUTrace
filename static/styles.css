@@ -529,7 +529,8 @@ tr:hover td { background: #fafbfd; }
   .lost-grid { grid-template-columns: 1fr; }
   .feature-grid { grid-template-columns: 1fr; }
   .feature-card { padding: 1.5rem 1rem; }
-  table { display: block; overflow-x: auto; white-space: nowrap; }
+  table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  table .btn-sm { white-space: nowrap; padding: 0.35rem 0.7rem; font-size: 0.75rem; }
   .info-row { flex-direction: column; gap: 0.2rem; }
   .found-hero { padding: 1.5rem 1rem; }
   .found-hero h2 { font-size: 1.3rem; }
