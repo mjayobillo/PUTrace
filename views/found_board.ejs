@@ -100,9 +100,7 @@
           <span><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></span>
         </div>
         <% if (currentUser) { %>
-          <form method="post" action="/found-items/<%= post.id %>/claim" style="margin-top:0.8rem;">
-            <button type="submit" class="btn-sm btn-success" style="width:100%;" onclick="return confirm('Claim this item as yours? You will see the finder\'s contact info.')">🙋 This is mine — Claim it</button>
-          </form>
+          <button type="button" class="btn-sm btn-success" style="width:100%;margin-top:0.8rem;" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= post.finder_email %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">🙋 This is mine — Claim it</button>
         <% } else { %>
           <p style="margin-top:0.8rem;font-size:0.85rem;color:#888;text-align:center;">
             <a href="/login">Login</a> to claim this item
@@ -112,5 +110,58 @@
     <% }) %>
   </div>
 <% } %>
+
+<!-- Claim Modal Overlay -->
+<div id="claimModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeClaimModal()">&times;</button>
+    <div style="text-align:center;margin-bottom:1.2rem;">
+      <div style="font-size:2.5rem;">🎉</div>
+      <h2 style="margin-top:0.5rem;" id="modalTitle">Item Claimed!</h2>
+    </div>
+    <p style="color:#555;text-align:center;margin-bottom:1.5rem;">Contact the finder to arrange pickup:</p>
+    <div class="modal-info">
+      <div class="modal-info-row">
+        <span class="modal-label">👤 Finder</span>
+        <span id="modalFinderName" class="modal-value"></span>
+      </div>
+      <div class="modal-info-row">
+        <span class="modal-label">📧 Email</span>
+        <a id="modalFinderEmail" href="" class="modal-value" style="color:#3a56e4;"></a>
+      </div>
+      <div class="modal-info-row" id="modalLocationRow" style="display:none;">
+        <span class="modal-label">📍 Found at</span>
+        <span id="modalLocation" class="modal-value"></span>
+      </div>
+    </div>
+    <form id="claimForm" method="post" action="" style="margin-top:1.5rem;">
+      <button type="submit" class="btn-success" style="width:100;">✅ Confirm Claim</button>
+    </form>
+    <button type="button" onclick="closeClaimModal()" class="button btn-outline" style="width:100%;margin-top:0.5rem;">Cancel</button>
+  </div>
+</div>
+
+<script>
+  function showClaimModal(itemName, finderName, finderEmail, location, postId) {
+    document.getElementById('modalTitle').textContent = 'Claim "' + itemName + '"';
+    document.getElementById('modalFinderName').textContent = finderName;
+    document.getElementById('modalFinderEmail').textContent = finderEmail;
+    document.getElementById('modalFinderEmail').href = 'mailto:' + finderEmail;
+    document.getElementById('claimForm').action = '/found-items/' + postId + '/claim';
+    if (location) {
+      document.getElementById('modalLocation').textContent = location;
+      document.getElementById('modalLocationRow').style.display = 'flex';
+    } else {
+      document.getElementById('modalLocationRow').style.display = 'none';
+    }
+    document.getElementById('claimModal').style.display = 'flex';
+  }
+  function closeClaimModal() {
+    document.getElementById('claimModal').style.display = 'none';
+  }
+  document.getElementById('claimModal').addEventListener('click', function(e) {
+    if (e.target === this) closeClaimModal();
+  });
+</script>
 
 <%- include('partials_footer') %>
