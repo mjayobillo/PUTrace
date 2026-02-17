@@ -459,8 +459,6 @@ app.post("/found/:token", async (req, res) => {
   return res.redirect(`/found/${req.params.token}`);
 });
 
-app.post("/report/:id/resolve", requireAuth, async (req, res) => {
-
 // ── Public Found Board (finders post items they picked up) ──
 
 app.get("/found-items", async (req, res) => {
