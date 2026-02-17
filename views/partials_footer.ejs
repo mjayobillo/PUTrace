@@ -4,6 +4,20 @@
       <p>Built with Node.js &amp; Supabase</p>
     </footer>
     <script>
+      // Toggle password visibility
+      function togglePassword(inputId, toggle) {
+        var input = document.getElementById(inputId);
+        if (input.type === 'password') {
+          input.type = 'text';
+          toggle.title = 'Hide password';
+          toggle.style.opacity = '1';
+        } else {
+          input.type = 'password';
+          toggle.title = 'Show password';
+          toggle.style.opacity = '0.55';
+        }
+      }
+
       // Restore scroll position after redirect
       (function () {
         var scrollY = sessionStorage.getItem("scrollY");

@@ -8,7 +8,12 @@
   <form method="post" action="/signup">
     <label>Full name <input name="full_name" required placeholder="Juan dela Cruz" /></label>
     <label>Email <input type="email" name="email" required placeholder="you@email.com" /></label>
-    <label>Password <small style="font-weight:400;color:#aaa;">(min 8 characters)</small> <input type="password" name="password" required minlength="8" placeholder="Create a strong password" /></label>
+    <label>Password <small style="font-weight:400;color:#aaa;">(min 8 characters)</small>
+      <div class="password-wrap">
+        <input type="password" name="password" id="signupPassword" required minlength="8" placeholder="Create a strong password" />
+        <span class="pw-toggle" onclick="togglePassword('signupPassword', this)" title="Show password">👁️</span>
+      </div>
+    </label>
     <button type="submit">Create Account</button>
   </form>
   <p class="center-text" style="margin-top:1rem;font-size:0.9rem;color:#888;">Already have an account? <a href="/login">Sign in</a></p>

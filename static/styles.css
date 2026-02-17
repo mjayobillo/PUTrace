@@ -122,6 +122,29 @@ input:focus, textarea:focus, select:focus {
 }
 textarea { resize: vertical; min-height: 80px; }
 
+/* ===== Password Toggle ===== */
+.password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.password-wrap input {
+  padding-right: 2.8rem;
+}
+.pw-toggle {
+  position: absolute;
+  right: 0.7rem;
+  cursor: pointer;
+  font-size: 1.15rem;
+  user-select: none;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+  line-height: 1;
+}
+.pw-toggle:hover {
+  opacity: 1;
+}
+
 /* ===== Buttons ===== */
 button, .button {
   display: inline-flex;
