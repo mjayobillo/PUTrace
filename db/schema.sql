@@ -31,3 +31,16 @@ create table if not exists public.finder_reports (
   status text not null default 'open',
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.found_posts (
+  id bigserial primary key,
+  finder_name text not null,
+  finder_email text not null,
+  item_name text not null,
+  item_description text,
+  category text default 'Other',
+  location_found text,
+  image_url text,
+  status text not null default 'unclaimed',
+  created_at timestamptz not null default now()
+);

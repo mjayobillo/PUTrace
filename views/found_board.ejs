@@ -1,0 +1,116 @@
+<%- include('partials_header') %>
+
+<div style="text-align:center;margin-bottom:1.5rem;">
+  <h2 style="font-size:1.8rem;">📦 Found Items Board</h2>
+  <p style="color:#888;max-width:550px;margin:0.5rem auto 0;">Found something on campus? Post it here so the owner can claim it. Looking for your lost item? Browse below!</p>
+</div>
+
+<!-- Post a Found Item -->
+<section class="card">
+  <details>
+    <summary class="button btn-outline" style="width:100%;text-align:center;list-style:none;cursor:pointer;">
+      ➕ I found an item — post it here
+    </summary>
+    <form method="post" action="/found-items" enctype="multipart/form-data" style="margin-top:1.2rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <label>Your name <input name="finder_name" required placeholder="Your full name" /></label>
+        <label>Your email <input type="email" name="finder_email" required placeholder="you@email.com" /></label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <label>Item name <input name="item_name" required placeholder="e.g. Black Hydro Flask" /></label>
+        <label>Category
+          <select name="category">
+            <% categories.forEach((cat) => { %>
+              <option value="<%= cat %>"><%= cat %></option>
+            <% }) %>
+          </select>
+        </label>
+      </div>
+      <label>Where did you find it? <input name="location_found" placeholder="e.g. Library 2nd floor, Room 301" /></label>
+      <label>Description <textarea name="item_description" rows="3" placeholder="Describe the item — color, brand, distinguishing marks..."></textarea></label>
+      <label>Photo (optional) <input type="file" name="image" accept="image/*" /></label>
+      <button type="submit" class="btn-success">Post Found Item</button>
+    </form>
+  </details>
+</section>
+
+<!-- Search & Filter -->
+<section class="card">
+  <form method="get" action="/found-items" class="search-filters">
+    <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:flex-end;">
+      <label style="flex:1;min-width:180px;">
+        🔍 Search
+        <input type="text" name="search" value="<%= search %>" placeholder="Search found items..." />
+      </label>
+      <label style="min-width:140px;">
+        Category
+        <select name="category">
+          <option value="">All</option>
+          <% categories.forEach((cat) => { %>
+            <option value="<%= cat %>" <%= filterCategory === cat ? 'selected' : '' %>><%= cat %></option>
+          <% }) %>
+        </select>
+      </label>
+      <button type="submit" class="btn-sm">Filter</button>
+      <% if (search || filterCategory) { %>
+        <a href="/found-items" class="button btn-sm btn-outline">Clear</a>
+      <% } %>
+    </div>
+  </form>
+</section>
+
+<!-- Results -->
+<% if (!posts || posts.length === 0) { %>
+  <section class="card center-text" style="padding:3rem;">
+    <div style="font-size:3rem;margin-bottom:0.5rem;">📭</div>
+    <% if (search || filterCategory) { %>
+      <h3>No items match your search</h3>
+      <p style="color:#888;">Try different keywords or <a href="/found-items">clear filters</a></p>
+    <% } else { %>
+      <h3>No found items posted yet</h3>
+      <p style="color:#888;">Found something on campus? Be the first to post it!</p>
+    <% } %>
+  </section>
+<% } else { %>
+  <p style="color:#888;margin-bottom:1rem;font-size:0.9rem;"><%= posts.length %> item<%= posts.length > 1 ? 's' : '' %> found and unclaimed</p>
+
+  <div class="lost-grid">
+    <% posts.forEach((post) => { %>
+      <article class="lost-card">
+        <div class="lost-card-header">
+          <div>
+            <h3><%= post.item_name %></h3>
+            <% if (post.category && post.category !== 'Other') { %>
+              <span class="badge badge-category"><%= post.category %></span>
+            <% } %>
+          </div>
+          <span class="badge badge-active">Found</span>
+        </div>
+        <% if (post.image_url) { %>
+          <div class="item-image-wrap">
+            <img src="<%= post.image_url %>" alt="<%= post.item_name %>" class="item-image" />
+          </div>
+        <% } %>
+        <p class="lost-card-desc"><%= post.item_description || 'No description provided' %></p>
+        <div class="lost-card-meta">
+          <span>Found by <strong><%= post.finder_name.split(' ')[0] %></strong></span>
+          <% if (post.location_found) { %>
+            <span>📍 <%= post.location_found %></span>
+          <% } %>
+          <span><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></span>
+        </div>
+        <% if (currentUser) { %>
+          <form method="post" action="/found-items/<%= post.id %>/claim" style="margin-top:0.8rem;">
+            <button type="submit" class="btn-sm btn-success" style="width:100%;" onclick="return confirm('Claim this item as yours? You will see the finder\'s contact info.')">🙋 This is mine — Claim it</button>
+          </form>
+        <% } else { %>
+          <p style="margin-top:0.8rem;font-size:0.85rem;color:#888;text-align:center;">
+            <a href="/login">Login</a> to claim this item
+          </p>
+        <% } %>
+      </article>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials_footer') %>

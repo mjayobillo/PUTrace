@@ -460,6 +460,125 @@ app.post("/found/:token", async (req, res) => {
 });
 
 app.post("/report/:id/resolve", requireAuth, async (req, res) => {
+
+// ── Public Found Board (finders post items they picked up) ──
+
+app.get("/found-items", async (req, res) => {
+  const search = (req.query.search || "").trim();
+  const filterCategory = req.query.category || "";
+
+  let query = supabase
+    .from("found_posts")
+    .select("*")
+    .eq("status", "unclaimed")
+    .order("created_at", { ascending: false });
+
+  if (filterCategory) query = query.eq("category", filterCategory);
+
+  const { data: posts } = await query;
+  let filteredPosts = posts || [];
+
+  if (search) {
+    const s = search.toLowerCase();
+    filteredPosts = filteredPosts.filter((p) =>
+      p.item_name.toLowerCase().includes(s) ||
+      (p.item_description || "").toLowerCase().includes(s) ||
+      (p.category || "").toLowerCase().includes(s) ||
+      (p.location_found || "").toLowerCase().includes(s)
+    );
+  }
+
+  res.render("found_board", {
+    posts: filteredPosts,
+    categories: CATEGORIES,
+    search,
+    filterCategory
+  });
+});
+
+app.post("/found-items", upload.single("image"), async (req, res) => {
+  const finder_name = sanitize(req.body.finder_name);
+  const finder_email = sanitize(req.body.finder_email);
+  const item_name = sanitize(req.body.item_name);
+  const item_description = sanitize(req.body.item_description);
+  const category = req.body.category || "Other";
+  const location_found = sanitize(req.body.location_found);
+
+  if (!isValidName(finder_name)) {
+    setFlash(req, "error", "Name must be 2–100 characters.");
+    return res.redirect("/found-items");
+  }
+  if (!isValidEmail(finder_email)) {
+    setFlash(req, "error", "Please enter a valid email address.");
+    return res.redirect("/found-items");
+  }
+  if (!isValidItemName(item_name)) {
+    setFlash(req, "error", "Item name is required (max 150 characters).");
+    return res.redirect("/found-items");
+  }
+
+  let image_url = null;
+  if (req.file) {
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+
+    const fileName = `found-${cryptoRandomToken()}.jpg`;
+    const { error: uploadErr } = await supabase.storage
+      .from("item-images")
+      .upload(fileName, compressedBuffer, {
+        contentType: "image/jpeg",
+        upsert: false
+      });
+    if (!uploadErr) {
+      const { data: urlData } = supabase.storage.from("item-images").getPublicUrl(fileName);
+      image_url = urlData.publicUrl;
+    }
+  }
+
+  const { error } = await supabase.from("found_posts").insert({
+    finder_name,
+    finder_email,
+    item_name,
+    item_description: item_description || null,
+    category: CATEGORIES.includes(category) ? category : "Other",
+    location_found: location_found || null,
+    image_url,
+    status: "unclaimed"
+  });
+
+  if (error) {
+    setFlash(req, "error", `Failed to post item: ${error.message}`);
+  } else {
+    setFlash(req, "success", "Found item posted! The owner can now find it here.");
+  }
+  return res.redirect("/found-items");
+});
+
+app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
+  const postId = Number(req.params.id);
+
+  const { data: post } = await supabase
+    .from("found_posts")
+    .select("*")
+    .eq("id", postId)
+    .eq("status", "unclaimed")
+    .maybeSingle();
+
+  if (!post) {
+    setFlash(req, "error", "Post not found or already claimed.");
+    return res.redirect("/found-items");
+  }
+
+  await supabase.from("found_posts").update({ status: "claimed" }).eq("id", postId);
+  setFlash(req, "success", `You claimed "${post.item_name}". Contact the finder at ${post.finder_email} to arrange pickup.`);
+  return res.redirect("/found-items");
+});
+
+// ── Resolve Reports ──
+
+app.post("/report/:id/resolve", requireAuth, async (req, res) => {
   const reportId = Number(req.params.id);
   const { data: report } = await supabase.from("finder_reports").select("id, item_id").eq("id", reportId).maybeSingle();
 
