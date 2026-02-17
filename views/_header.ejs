@@ -1,36 +1,36 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PUTrace</title>
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <header class="site-header">
-      <div class="brand">
-        <img src="/putrace_circular_logo.png" alt="PUTrace Logo" class="logo-img" />
-        <div>
-          <h1>PUTrace</h1>
-          <p class="sub">Campus Item Recovery System</p>
+  <!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>PUTrace</title>
+      <link rel="stylesheet" href="/styles.css" />
+    </head>
+    <body>
+      <header class="site-header">
+        <div class="brand">
+          <img src="/putrace_circular_logo.png" alt="PUTrace Logo" class="logo-img" />
+          <div>
+            <h1>PUTrace</h1>
+            <p class="sub">Campus Item Recovery System</p>
+          </div>
         </div>
-      </div>
-      <nav>
-        <a href="/">Home</a>
-        <a href="/lost">Lost Board</a>
-        <a href="/found-items">Found Board</a>
-        <% if (currentUser) { %>
-          <a href="/dashboard">Dashboard</a>
-          <a href="/account">Account</a>
-          <a href="/logout">Logout</a>
-        <% } else { %>
-          <a href="/login">Login</a>
-          <a href="/signup" class="nav-cta">Sign up</a>
-        <% } %>
-      </nav>
-    </header>
+        <nav>
+          <a href="/">Home</a>
+          <a href="/lost">Lost Board</a>
+          <a href="/found-items">Found Board</a>
+          <% if (currentUser) { %>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/account">Account</a>
+            <a href="/logout">Logout</a>
+          <% } else { %>
+            <a href="/login">Login</a>
+            <a href="/signup" class="nav-cta">Sign up</a>
+          <% } %>
+        </nav>
+      </header>
 
-    <main>
-      <% if (flash) { %>
-        <div class="flash <%= flash.type %>"><%= flash.message %></div>
-      <% } %>
+      <main>
+        <% if (flash) { %>
+          <div class="flash <%= flash.type %>"><%= flash.message %></div>
+        <% } %>
