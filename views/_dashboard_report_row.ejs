@@ -1,0 +1,27 @@
+<tr>
+  <td><strong><%= r.item_name %></strong></td>
+  <td><%= r.finder_name %><br/><small class="muted"><%= r.finder_email %></small></td>
+  <td>
+    <%= r.message %>
+    <% if (r.location_hint) { %>
+      <br/>
+      <small class="muted"><%= r.location_hint %></small>
+    <% } %>
+  </td>
+  <td>
+    <% if (r.status === 'open') { %>
+      <span class="badge badge-open">Open</span>
+    <% } else { %>
+      <span class="badge badge-resolved">Resolved</span>
+    <% } %>
+  </td>
+  <td>
+    <% if (r.status === 'open') { %>
+      <form method="post" action="/report/<%= r.id %>/resolve" class="inline-form">
+        <button type="submit" class="btn-sm btn-success">Resolve</button>
+      </form>
+    <% } else { %>
+      <span class="muted">-</span>
+    <% } %>
+  </td>
+</tr>

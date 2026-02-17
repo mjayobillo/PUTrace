@@ -1,0 +1,68 @@
+<%
+  const statusBadgeClassByValue = {
+    active: 'badge-active',
+    lost: 'badge-lost',
+    recovered: 'badge-resolved'
+  };
+  const statusLabelByValue = {
+    active: 'Active',
+    lost: 'Lost',
+    recovered: 'Recovered'
+  };
+
+  const nextActionByStatus = {
+    active: { value: 'lost', label: 'Mark Lost', className: 'btn-warning' },
+    lost: { value: 'recovered', label: 'Recovered', className: 'btn-success' },
+    recovered: { value: 'active', label: 'Reactivate', className: 'btn-outline' }
+  };
+
+  const statusBadgeClass = statusBadgeClassByValue[item.item_status] || 'badge-active';
+  const statusLabel = statusLabelByValue[item.item_status] || 'Active';
+  const nextAction = nextActionByStatus[item.item_status] || nextActionByStatus.active;
+%>
+
+<article class="item">
+  <div class="item-head">
+    <h3><%= item.item_name %></h3>
+    <span class="badge <%= statusBadgeClass %>"><%= statusLabel %></span>
+  </div>
+
+  <% if (item.category && item.category !== 'Other') { %>
+    <span class="badge badge-category"><%= item.category %></span>
+  <% } %>
+
+  <% if (item.image_url) { %>
+    <div class="item-image-wrap">
+      <img src="<%= item.image_url %>" alt="<%= item.item_name %>" class="item-image" />
+    </div>
+  <% } %>
+
+  <p class="item-desc"><%= item.item_description || 'No description' %></p>
+
+  <div class="qr-wrap">
+    <img src="<%= item.qr_data_url %>" alt="QR Code" width="160" />
+  </div>
+
+  <div>
+    <% if (item.open_reports > 0) { %>
+      <span class="badge badge-open"><%= item.open_reports %> open report<%= item.open_reports > 1 ? 's' : '' %></span>
+    <% } else { %>
+      <span class="badge badge-none">No reports</span>
+    <% } %>
+  </div>
+
+  <p class="item-meta item-link"><%= baseUrl %>/found/<%= item.token %></p>
+
+  <div class="item-actions">
+    <a href="/download/<%= item.token %>" class="button btn-sm btn-outline">Download</a>
+
+    <form method="post" action="/item/<%= item.id %>/status" class="inline-form">
+      <input type="hidden" name="item_status" value="<%= nextAction.value %>" />
+      <button type="submit" class="btn-sm <%= nextAction.className %>"><%= nextAction.label %></button>
+    </form>
+
+    <form method="post" action="/item/<%= item.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this item and all its reports?')">
+      <button type="submit" class="btn-sm btn-danger">Delete</button>
+    </form>
+  </div>
+</article>

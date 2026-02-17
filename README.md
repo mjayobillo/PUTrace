@@ -1,105 +1,98 @@
 # PUTrace
 
-**QR-based campus lost-item recovery system** built with Node.js, Express, and Supabase.
+QR-based campus lost-item recovery system built with Node.js, Express, EJS, and Supabase.
 
-Students register their valuables, print unique QR labels, and attach them to items. When someone finds a lost item, they scan the QR code and submit a report — the owner is notified instantly. There's also a **Found Items Board** where finders can post items they picked up so owners can claim them.
-
----
+Students register valuables, attach QR labels, and get finder reports when someone scans the QR code. The app also includes a public Found Items Board for items that were picked up and posted by finders.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js ≥ 18 |
-| Framework | Express 4 |
-| Database | Supabase (Postgres) |
-| Templating | EJS |
-| Authentication | express-session + bcryptjs |
-| QR Generation | qrcode (stored as data-URL in DB) |
-| Image Upload | Multer (memory storage, 5 MB limit) |
-| Image Processing | Sharp (resize to 800 px, JPEG @ 75 %) |
-| File Storage | Supabase Storage (`item-images` bucket) |
+- Runtime: Node.js >= 18
+- Framework: Express 4
+- Database: Supabase (Postgres)
+- Templates: EJS
+- Auth: `express-session` + `bcryptjs`
+- QR: `qrcode` (stored as a data URL)
+- Uploads: Multer memory storage (max 5 MB)
+- Image processing: Sharp (resized to max 800x800, JPEG quality 75)
+- File storage: Supabase Storage bucket `item-images`
 
-## Features
+## Core Features
 
-- **Auth** — sign up, login, logout with hashed passwords
-- **Item Registration** — name, description, category, optional photo upload
-- **QR Codes** — auto-generated per item; download as PNG
-- **QR Scan Page** — public page shown when a QR code is scanned; finder submits a report
-- **Lost Board** — public listing of all items marked as "lost," with sighting reports
-- **Found Items Board** — finders post items they picked up; owners can claim them (requires login)
-- **Dashboard** — search, filter by category/status, view open reports, manage items
-- **Item Status** — toggle between *active*, *lost*, and *recovered*
-- **Report Resolution** — mark finder reports as resolved
-- **Account Management** — update display name, change password
-- **Item Deletion** — remove items and associated reports
-- **Password Visibility Toggle** — eye icon on login and signup forms
+- Sign up, login, logout
+- Register items with optional image upload
+- Generate and download QR codes
+- Public QR scan page to submit finder reports
+- Public Lost Board (`/lost`) with sighting reporting
+- Public Found Items Board (`/found-items`) with claim flow
+- Dashboard search and filtering
+- Item status updates (`active`, `lost`, `recovered`)
+- Resolve finder reports
+- Account settings (name and password)
 
-### Item Categories
+## Item Status Flow
 
-Electronics · ID / Cards · Clothing · Bags · Bottles · Books · Accessories · Keys · Other
+- `active`: normal tracked item, shown in owner dashboard
+- `lost`: appears on the public Lost Board
+- `recovered`: recovered item, still visible in owner dashboard
+
+Notes:
+- New items are created as `active`.
+- The Lost Board only shows items marked `lost`.
+- Owners can change status from the dashboard.
 
 ## Project Structure
 
+```text
+server.js
+views/
+  _header.ejs
+  _footer.ejs
+  _dashboard_item_card.ejs
+  _dashboard_report_row.ejs
+  home.ejs
+  signup.ejs
+  login.ejs
+  dashboard.ejs
+  lost.ejs
+  found_qr.ejs
+  found_items.ejs
+  account.ejs
+  not_found.ejs
+static/
+  styles.css
+  putrace_circular_logo.png
+db/
+  schema.sql
+Procfile
 ```
-server.js              Main Express app and all routes
-views/                 EJS templates
-  home.ejs               Landing page
-  signup.ejs             Registration form
-  login.ejs              Login form
-  dashboard.ejs          Owner dashboard (items + reports)
-  lost.ejs               Public lost-item board
-  found_qr.ejs           Page shown after QR scan
-  found_items.ejs        Found Items Board (finders post here)
-  account.ejs            Profile & password settings
-  not_found.ejs          404 page
-  _header.ejs            Shared header partial
-  _footer.ejs            Shared footer partial
-static/styles.css      Stylesheet
-db/schema.sql          Supabase SQL schema (users, items, finder_reports, found_posts)
-Procfile               Render start command
-.env                   Environment variables (not committed)
-```
 
-## Routes
+## Main Routes
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/` | — | Landing page |
-| GET | `/signup` | — | Sign-up form |
-| POST | `/signup` | — | Create account |
-| GET | `/login` | — | Login form |
-| POST | `/login` | — | Authenticate |
-| GET | `/logout` | — | Destroy session |
-| GET | `/dashboard` | Yes | List items & reports (search/filter) |
-| POST | `/dashboard` | Yes | Register new item (with optional image) |
-| GET | `/lost` | — | Public lost-item board |
-| POST | `/lost/:id/sighting` | — | Submit sighting report |
-| GET | `/found/:token` | — | QR scan page |
-| POST | `/found/:token` | — | Submit finder report |
-| GET | `/found-items` | — | Found Items Board |
-| POST | `/found-items` | — | Post a found item |
-| POST | `/found-items/:id/claim` | Yes | Claim a found item |
-| POST | `/report/:id/resolve` | Yes | Mark report as resolved |
-| GET | `/account` | Yes | Profile page |
-| POST | `/account` | Yes | Update display name |
-| POST | `/account/password` | Yes | Change password |
-| POST | `/item/:id/status` | Yes | Toggle item status |
-| POST | `/item/:id/delete` | Yes | Delete item + reports |
-| GET | `/download/:token` | Yes | Download QR code PNG |
+- `GET /` home
+- `GET /signup`, `POST /signup`
+- `GET /login`, `POST /login`
+- `GET /logout`
+- `GET /dashboard`, `POST /dashboard`
+- `GET /lost`, `POST /lost/:id/sighting`
+- `GET /found/:token`, `POST /found/:token`
+- `GET /found-items`, `POST /found-items`, `POST /found-items/:id/claim`
+- `POST /report/:id/resolve`
+- `GET /account`, `POST /account`, `POST /account/password`
+- `POST /item/:id/status`, `POST /item/:id/delete`
+- `GET /download/:token`
 
-## Database Schema
+## Database Tables
 
-Four tables managed via `db/schema.sql`:
+Defined in `db/schema.sql`:
 
-- **users** — `id` (uuid), `full_name`, `email` (unique), `password_hash`, `created_at`
-- **items** — `id` (uuid), `user_id` (FK), `item_name`, `item_description`, `category`, `item_status`, `image_url`, `token` (unique), `qr_data_url`, `created_at`
-- **finder_reports** — `id` (bigserial), `item_id` (FK), `finder_name`, `finder_email`, `location_hint`, `message`, `status`, `created_at`
-- **found_posts** — `id` (bigserial), `finder_name`, `finder_email`, `item_name`, `item_description`, `category`, `location_found`, `image_url`, `status`, `created_at`
+- `users`
+- `items`
+- `finder_reports`
+- `found_posts`
 
 ## Environment Variables
 
-Create a `.env` file in the project root:
+Create `.env` in the project root:
 
 ```env
 PORT=5000
@@ -109,38 +102,22 @@ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 ```
 
-## Getting Started
+## Local Setup
 
 ```bash
-# Install dependencies
 npm install
-
-# Run the SQL schema in your Supabase project's SQL editor
-# (paste the contents of db/schema.sql)
-
-# Create an "item-images" bucket in Supabase Storage (public access)
-
-# Start the dev server
 npm run dev
 ```
 
-The app will be available at `http://localhost:5000`.
+Before running:
 
-## Deployment (Render)
+- Execute `db/schema.sql` in Supabase SQL editor
+- Create a public storage bucket named `item-images`
 
-| Setting | Value |
-|---------|-------|
-| Build command | `npm install` |
-| Start command | `node server.js` |
-| Environment | Add all `.env` variables in the Render dashboard |
+App URL: `http://localhost:5000`
 
-## Pilot Testing (10 Students)
+## Deploy (Render)
 
-1. Create 10 student accounts.
-2. Each student registers at least one valuable item.
-3. Print and attach QR labels to items.
-4. Simulate the lost/found flow by scanning a QR code.
-5. Test the Found Items Board by posting and claiming items.
-6. Measure recovery response rate and turnaround time.
-
-<!-- trigger redeploy for logo update -->
+- Build command: `npm install`
+- Start command: `node server.js`
+- Add the same environment variables from `.env`

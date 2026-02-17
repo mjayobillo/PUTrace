@@ -360,6 +360,48 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 
 /* ===== Search & Filters ===== */
 .search-filters { margin-bottom: 1.2rem; }
+.dashboard-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.dashboard-title { font-size: 1.5rem; }
+.dashboard-form { max-width: 500px; }
+.field-note { font-weight: 400; color: #999; }
+.file-input-tight { padding: 0.4rem; }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.section-title { margin-bottom: 0; }
+.row-filters {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.filter-search { flex: 1; min-width: 180px; }
+.filter-category { min-width: 140px; }
+.filter-status { min-width: 130px; }
+.empty-state { padding: 2rem; color: #999; }
+.empty-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+.item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.item-link { word-break: break-all; }
+.inline-form { margin: 0; }
+.muted { color: #888; }
+.action-col-min { min-width: 90px; }
 
 /* ===== Table ===== */
 table { width: 100%; border-collapse: collapse; }

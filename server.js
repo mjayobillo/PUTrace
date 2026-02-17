@@ -26,6 +26,9 @@ const supabase = createClient(process.env.SUPABASE_URL || "", process.env.SUPABA
 
 // Item categories for dropdowns
 const CATEGORIES = ["Electronics", "ID / Cards", "Clothing", "Bags", "Bottles", "Books", "Accessories", "Keys", "Other"];
+const ITEM_STATUS = { ACTIVE: "active", LOST: "lost", RECOVERED: "recovered" };
+const ITEM_STATUS_VALUES = Object.values(ITEM_STATUS);
+const REPORT_STATUS = { OPEN: "open", RESOLVED: "resolved" };
 
 // ── Helper Functions ──
 
@@ -104,6 +107,43 @@ app.use(async (req, res, next) => {
 // Show a one-time message (success or error)
 function setFlash(req, type, message) {
   req.session.flash = { type, message };
+}
+
+// Set flash and redirect in one line
+function flashRedirect(req, res, path, type, message) {
+  setFlash(req, type, message);
+  return res.redirect(path);
+}
+
+// Keep category values consistent
+function normalizeCategory(category) {
+  return CATEGORIES.includes(category) ? category : "Other";
+}
+
+// Shared search helper for simple text filtering
+function filterBySearch(rows, search, fields) {
+  const list = rows || [];
+  const query = sanitize(search).toLowerCase();
+  if (!query) return list;
+
+  return list.filter((row) =>
+    fields.some((field) => String(row[field] || "").toLowerCase().includes(query))
+  );
+}
+
+// Shared validation for finder/sighting reports
+function getReportValidationError(name, email, message) {
+  if (name.length < 2) return "Name is too short.";
+  if (!isValidEmail(email)) return "Invalid email.";
+  if (message.length < 3) return "Message is too short.";
+  return null;
+}
+
+// Load an item only if it belongs to the logged-in user
+async function getOwnedItem(req, itemId, columns = "id, user_id") {
+  const { data: item } = await supabase.from("items").select(columns).eq("id", itemId).maybeSingle();
+  if (!item || item.user_id !== req.session.userId) return null;
+  return item;
 }
 
 // Block access if not logged in
@@ -223,15 +263,7 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     const { data: items } = await query;
 
     // Filter by search text
-    let filteredItems = items || [];
-    if (search) {
-      const s = search.toLowerCase();
-      filteredItems = filteredItems.filter((i) =>
-        i.item_name.toLowerCase().includes(s) ||
-        (i.item_description || "").toLowerCase().includes(s) ||
-        (i.category || "").toLowerCase().includes(s)
-      );
-    }
+    const filteredItems = filterBySearch(items, search, ["item_name", "item_description", "category"]);
 
     // Get finder reports for these items
     const itemIds = filteredItems.map((i) => i.id);
@@ -249,7 +281,7 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     const itemNameMap = Object.fromEntries(filteredItems.map((i) => [i.id, i.item_name]));
     const openCounts = {};
     for (const r of reports) {
-      if (r.status === "open") openCounts[r.item_id] = (openCounts[r.item_id] || 0) + 1;
+      if (r.status === REPORT_STATUS.OPEN) openCounts[r.item_id] = (openCounts[r.item_id] || 0) + 1;
     }
 
     res.render("dashboard", {
@@ -274,8 +306,7 @@ app.post("/dashboard", requireAuth, upload.single("image"), async (req, res) => 
     const category = req.body.category || "Other";
 
     if (!item_name || item_name.length > 150) {
-      setFlash(req, "error", "Item name is required (max 150 characters).");
-      return res.redirect("/dashboard");
+      return flashRedirect(req, res, "/dashboard", "error", "Item name is required (max 150 characters).");
     }
 
     // Generate unique token and QR code
@@ -294,22 +325,19 @@ app.post("/dashboard", requireAuth, upload.single("image"), async (req, res) => 
       user_id: req.session.userId,
       item_name,
       item_description: item_description || null,
-      category: CATEGORIES.includes(category) ? category : "Other",
-      item_status: "active",
+      category: normalizeCategory(category),
+      item_status: ITEM_STATUS.ACTIVE,
       image_url, token, qr_data_url
     });
 
     if (error) {
-      setFlash(req, "error", "Failed to register item.");
-      return res.redirect("/dashboard");
+      return flashRedirect(req, res, "/dashboard", "error", "Failed to register item.");
     }
 
-    setFlash(req, "success", "Item registered and QR generated.");
-    return res.redirect("/dashboard");
+    return flashRedirect(req, res, "/dashboard", "success", "Item registered and QR generated.");
   } catch (err) {
     console.error("Register item error:", err);
-    setFlash(req, "error", "Something went wrong.");
-    return res.redirect("/dashboard");
+    return flashRedirect(req, res, "/dashboard", "error", "Something went wrong.");
   }
 });
 
@@ -324,21 +352,12 @@ app.get("/lost", async (req, res) => {
     let query = supabase
       .from("items")
       .select("id, item_name, item_description, category, image_url, created_at, user_id")
-      .eq("item_status", "lost")
+      .eq("item_status", ITEM_STATUS.LOST)
       .order("created_at", { ascending: false });
     if (filterCategory) query = query.eq("category", filterCategory);
 
     const { data: items } = await query;
-    let filteredItems = items || [];
-
-    if (search) {
-      const s = search.toLowerCase();
-      filteredItems = filteredItems.filter((i) =>
-        i.item_name.toLowerCase().includes(s) ||
-        (i.item_description || "").toLowerCase().includes(s) ||
-        (i.category || "").toLowerCase().includes(s)
-      );
-    }
+    const filteredItems = filterBySearch(items, search, ["item_name", "item_description", "category"]);
 
     // Get owner first names only (for privacy)
     const userIds = [...new Set(filteredItems.map((i) => i.user_id))];
@@ -378,9 +397,8 @@ app.post("/lost/:id/sighting", async (req, res) => {
     }
 
     // Validate inputs
-    if (reporter_name.length < 2) { setFlash(req, "error", "Name is too short."); return res.redirect("/lost"); }
-    if (!isValidEmail(reporter_email)) { setFlash(req, "error", "Invalid email."); return res.redirect("/lost"); }
-    if (message.length < 3) { setFlash(req, "error", "Message is too short."); return res.redirect("/lost"); }
+    const validationError = getReportValidationError(reporter_name, reporter_email, message);
+    if (validationError) return flashRedirect(req, res, "/lost", "error", validationError);
 
     // Save report
     const { error } = await supabase.from("finder_reports").insert({
@@ -389,19 +407,17 @@ app.post("/lost/:id/sighting", async (req, res) => {
       finder_email: reporter_email,
       location_hint: location || null,
       message: `[Sighting] ${message}`,
-      status: "open"
+      status: REPORT_STATUS.OPEN
     });
 
     if (error) {
-      setFlash(req, "error", "Failed to submit sighting.");
+      return flashRedirect(req, res, "/lost", "error", "Failed to submit sighting.");
     } else {
-      setFlash(req, "success", `Sighting reported for "${item.item_name}". The owner has been notified!`);
+      return flashRedirect(req, res, "/lost", "success", `Sighting reported for "${item.item_name}". The owner has been notified!`);
     }
-    return res.redirect("/lost");
   } catch (err) {
     console.error("Sighting error:", err);
-    setFlash(req, "error", "Something went wrong.");
-    return res.redirect("/lost");
+    return flashRedirect(req, res, "/lost", "error", "Something went wrong.");
   }
 });
 
@@ -432,9 +448,8 @@ app.post("/found/:token", async (req, res) => {
     if (!item) return res.status(404).render("not_found");
 
     // Basic validation
-    if (finder_name.length < 2) { setFlash(req, "error", "Name is too short."); return res.redirect(`/found/${req.params.token}`); }
-    if (!isValidEmail(finder_email)) { setFlash(req, "error", "Invalid email."); return res.redirect(`/found/${req.params.token}`); }
-    if (message.length < 3) { setFlash(req, "error", "Message is too short."); return res.redirect(`/found/${req.params.token}`); }
+    const validationError = getReportValidationError(finder_name, finder_email, message);
+    if (validationError) return flashRedirect(req, res, `/found/${req.params.token}`, "error", validationError);
 
     // Save report to database
     const { error } = await supabase.from("finder_reports").insert({
@@ -443,19 +458,17 @@ app.post("/found/:token", async (req, res) => {
       finder_email,
       location_hint: location_hint || null,
       message,
-      status: "open"
+      status: REPORT_STATUS.OPEN
     });
 
     if (error) {
-      setFlash(req, "error", "Failed to submit report.");
+      return flashRedirect(req, res, `/found/${req.params.token}`, "error", "Failed to submit report.");
     } else {
-      setFlash(req, "success", "Report submitted to owner!");
+      return flashRedirect(req, res, `/found/${req.params.token}`, "success", "Report submitted to owner!");
     }
-    return res.redirect(`/found/${req.params.token}`);
   } catch (err) {
     console.error("QR report error:", err);
-    setFlash(req, "error", "Something went wrong.");
-    return res.redirect(`/found/${req.params.token}`);
+    return flashRedirect(req, res, `/found/${req.params.token}`, "error", "Something went wrong.");
   }
 });
 
@@ -474,18 +487,7 @@ app.get("/found-items", async (req, res) => {
     if (filterCategory) query = query.eq("category", filterCategory);
 
     const { data: posts } = await query;
-    let filtered = posts || [];
-
-    // Search filter
-    if (search) {
-      const s = search.toLowerCase();
-      filtered = filtered.filter((p) =>
-        p.item_name.toLowerCase().includes(s) ||
-        (p.item_description || "").toLowerCase().includes(s) ||
-        (p.category || "").toLowerCase().includes(s) ||
-        (p.location_found || "").toLowerCase().includes(s)
-      );
-    }
+    const filtered = filterBySearch(posts, search, ["item_name", "item_description", "category", "location_found"]);
 
     res.render("found_items", { posts: filtered, categories: CATEGORIES, search, filterCategory });
   } catch (err) {
@@ -506,9 +508,9 @@ app.post("/found-items", upload.single("image"), async (req, res) => {
     const location_found = sanitize(req.body.location_found);
 
     // Validate
-    if (finder_name.length < 2) { setFlash(req, "error", "Name is too short."); return res.redirect("/found-items"); }
-    if (!isValidEmail(finder_email)) { setFlash(req, "error", "Invalid email."); return res.redirect("/found-items"); }
-    if (!item_name || item_name.length > 150) { setFlash(req, "error", "Item name is required (max 150 chars)."); return res.redirect("/found-items"); }
+    if (finder_name.length < 2) return flashRedirect(req, res, "/found-items", "error", "Name is too short.");
+    if (!isValidEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", "Invalid email.");
+    if (!item_name || item_name.length > 150) return flashRedirect(req, res, "/found-items", "error", "Item name is required (max 150 chars).");
 
     // Upload image if provided (reuse helper)
     const image_url = req.file ? await uploadImage(req.file.buffer, "found") : null;
@@ -517,22 +519,20 @@ app.post("/found-items", upload.single("image"), async (req, res) => {
     const { error } = await supabase.from("found_posts").insert({
       finder_name, finder_email, item_name,
       item_description: item_description || null,
-      category: CATEGORIES.includes(category) ? category : "Other",
+      category: normalizeCategory(category),
       location_found: location_found || null,
       image_url,
       status: "unclaimed"
     });
 
     if (error) {
-      setFlash(req, "error", "Failed to post item.");
+      return flashRedirect(req, res, "/found-items", "error", "Failed to post item.");
     } else {
-      setFlash(req, "success", "Found item posted! The owner can now find it here.");
+      return flashRedirect(req, res, "/found-items", "success", "Found item posted! The owner can now find it here.");
     }
-    return res.redirect("/found-items");
   } catch (err) {
     console.error("Post found item error:", err);
-    setFlash(req, "error", "Something went wrong.");
-    return res.redirect("/found-items");
+    return flashRedirect(req, res, "/found-items", "error", "Something went wrong.");
   }
 });
 
@@ -569,10 +569,10 @@ app.post("/report/:id/resolve", requireAuth, async (req, res) => {
     if (!report) return res.status(404).render("not_found");
 
     // Make sure the logged-in user owns the item
-    const { data: item } = await supabase.from("items").select("id, user_id").eq("id", report.item_id).single();
-    if (!item || item.user_id !== req.session.userId) return res.status(403).send("Forbidden");
+    const item = await getOwnedItem(req, report.item_id);
+    if (!item) return res.status(403).send("Forbidden");
 
-    await supabase.from("finder_reports").update({ status: "resolved" }).eq("id", report.id);
+    await supabase.from("finder_reports").update({ status: REPORT_STATUS.RESOLVED }).eq("id", report.id);
     setFlash(req, "success", "Report marked as resolved.");
     return res.redirect("/dashboard");
   } catch (err) {
@@ -596,7 +596,7 @@ app.get("/account", requireAuth, async (req, res) => {
     if (itemIds.length > 0) {
       const { data: reports } = await supabase.from("finder_reports").select("status").in("item_id", itemIds);
       for (const r of reports || []) {
-        if (r.status === "open") openReports++;
+        if (r.status === REPORT_STATUS.OPEN) openReports++;
         else resolvedReports++;
       }
     }
@@ -657,11 +657,10 @@ app.post("/account/password", requireAuth, async (req, res) => {
 
 app.post("/item/:id/status", requireAuth, async (req, res) => {
   const { item_status } = req.body;
-  const allowed = ["active", "lost", "recovered"];
 
-  const { data: item } = await supabase.from("items").select("id, user_id").eq("id", req.params.id).maybeSingle();
-  if (!item || item.user_id !== req.session.userId) { setFlash(req, "error", "Item not found."); return res.redirect("/dashboard"); }
-  if (!allowed.includes(item_status)) { setFlash(req, "error", "Invalid status."); return res.redirect("/dashboard"); }
+  const item = await getOwnedItem(req, req.params.id);
+  if (!item) { setFlash(req, "error", "Item not found."); return res.redirect("/dashboard"); }
+  if (!ITEM_STATUS_VALUES.includes(item_status)) { setFlash(req, "error", "Invalid status."); return res.redirect("/dashboard"); }
 
   await supabase.from("items").update({ item_status }).eq("id", item.id);
   setFlash(req, "success", `Item marked as ${item_status}.`);
@@ -671,8 +670,8 @@ app.post("/item/:id/status", requireAuth, async (req, res) => {
 // ── Delete Item ──
 
 app.post("/item/:id/delete", requireAuth, async (req, res) => {
-  const { data: item } = await supabase.from("items").select("id, user_id").eq("id", req.params.id).maybeSingle();
-  if (!item || item.user_id !== req.session.userId) { setFlash(req, "error", "Item not found."); return res.redirect("/dashboard"); }
+  const item = await getOwnedItem(req, req.params.id);
+  if (!item) { setFlash(req, "error", "Item not found."); return res.redirect("/dashboard"); }
 
   // Delete related reports first, then the item
   await supabase.from("finder_reports").delete().eq("item_id", item.id);
