@@ -369,6 +369,11 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   gap: 1rem;
 }
 .dashboard-title { font-size: 1.5rem; }
+.dashboard-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
 .dashboard-form { max-width: 500px; }
 .field-note { font-weight: 400; color: #999; }
 .file-input-tight { padding: 0.4rem; }
@@ -402,6 +407,63 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 .inline-form { margin: 0; }
 .muted { color: #888; }
 .action-col-min { min-width: 90px; }
+.action-stack { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+/* ===== Messages ===== */
+.conversation-list { display: grid; gap: 0.8rem; }
+.conversation-card {
+  display: block;
+  background: #fff;
+  border: 1px solid #e8ecf6;
+  border-radius: 12px;
+  padding: 1rem;
+  color: inherit;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.conversation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+.conversation-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+.conversation-preview {
+  margin: 0.4rem 0;
+  color: #444;
+}
+.chat-thread {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.chat-bubble {
+  max-width: 78%;
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e8ecf6;
+  background: #f8f9fc;
+}
+.chat-bubble.mine {
+  margin-left: auto;
+  background: #e8efff;
+  border-color: #cfdcff;
+}
+.chat-bubble.theirs {
+  margin-right: auto;
+}
+.chat-meta {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.2rem;
+}
+.chat-time {
+  margin-top: 0.3rem;
+  color: #888;
+}
 
 /* ===== Table ===== */
 table { width: 100%; border-collapse: collapse; }

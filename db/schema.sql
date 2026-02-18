@@ -44,3 +44,14 @@ create table if not exists public.found_posts (
   status text not null default 'unclaimed',
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.report_messages (
+  id bigserial primary key,
+  report_id bigint not null references public.finder_reports(id) on delete cascade,
+  sender_user_id uuid not null references public.users(id) on delete cascade,
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists report_messages_report_id_created_at_idx
+  on public.report_messages(report_id, created_at);

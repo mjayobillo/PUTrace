@@ -31,6 +31,30 @@
           });
         });
       })();
+
+      // Make success notifications more visible via modal confirmation
+      (function () {
+        var modal = document.getElementById("success-modal");
+        if (!modal) return;
+
+        function closeModal() {
+          modal.style.display = "none";
+        }
+
+        var closeBtn = document.getElementById("success-modal-close");
+        var okBtn = document.getElementById("success-modal-ok");
+
+        if (closeBtn) closeBtn.addEventListener("click", closeModal);
+        if (okBtn) okBtn.addEventListener("click", closeModal);
+
+        modal.addEventListener("click", function (event) {
+          if (event.target === modal) closeModal();
+        });
+
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") closeModal();
+        });
+      })();
     </script>
   </body>
 </html>

@@ -39,6 +39,7 @@
       <form method="post" action="/account/password">
         <label>Current password <input type="password" name="current_password" required /></label>
         <label>New password <small style="font-weight:400;color:#aaa;">(min 8 chars)</small> <input type="password" name="new_password" required minlength="8" /></label>
+        <label>Confirm new password <input type="password" name="confirm_new_password" required minlength="8" /></label>
         <button type="submit" class="btn-sm btn-outline">Update Password</button>
       </form>
     </div>

@@ -1,0 +1,35 @@
+<%- include('_header') %>
+
+<section class="card">
+  <div class="section-head">
+    <h2 class="section-title"><%= item.item_name %></h2>
+    <a href="/messages" class="button btn-sm btn-outline">Back to Messages</a>
+  </div>
+  <p class="muted">Chat with: <%= counterpartName %></p>
+  <p class="muted"><small>Original report: <%= report.message %></small></p>
+</section>
+
+<section class="card">
+  <div class="chat-thread">
+    <% if (!messages || messages.length === 0) { %>
+      <p class="muted">No messages yet. Start the conversation below.</p>
+    <% } else { %>
+      <% messages.forEach((m) => { %>
+        <div class="chat-bubble <%= m.is_me ? 'mine' : 'theirs' %>">
+          <div class="chat-meta"><%= m.is_me ? 'You' : m.sender_name %></div>
+          <div><%= m.message %></div>
+          <div class="chat-time"><small><%= new Date(m.created_at).toLocaleString('en-US') %></small></div>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <form method="post" action="/messages/<%= report.id %>">
+    <label>Message
+      <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
+    </label>
+    <button type="submit">Send Message</button>
+  </form>
+</section>
+
+<%- include('_footer') %>

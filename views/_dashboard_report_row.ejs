@@ -16,12 +16,13 @@
     <% } %>
   </td>
   <td>
-    <% if (r.status === 'open') { %>
-      <form method="post" action="/report/<%= r.id %>/resolve" class="inline-form">
-        <button type="submit" class="btn-sm btn-success">Resolve</button>
-      </form>
-    <% } else { %>
-      <span class="muted">-</span>
-    <% } %>
+    <div class="action-stack">
+      <a href="/messages/<%= r.id %>" class="button btn-sm btn-outline">Open Chat</a>
+      <% if (r.status === 'open') { %>
+        <form method="post" action="/report/<%= r.id %>/resolve" class="inline-form">
+          <button type="submit" class="btn-sm btn-success">Resolve</button>
+        </form>
+      <% } %>
+    </div>
   </td>
 </tr>

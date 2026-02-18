@@ -29,6 +29,7 @@ const CATEGORIES = ["Electronics", "ID / Cards", "Clothing", "Bags", "Bottles", 
 const ITEM_STATUS = { ACTIVE: "active", LOST: "lost", RECOVERED: "recovered" };
 const ITEM_STATUS_VALUES = Object.values(ITEM_STATUS);
 const REPORT_STATUS = { OPEN: "open", RESOLVED: "resolved" };
+const ALLOWED_EMAIL_DOMAIN = "panpacificu.edu.ph";
 
 // ── Helper Functions ──
 
@@ -40,6 +41,12 @@ function sanitize(str) {
 // Check if email format is valid
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Restrict emails to school domain
+function isSchoolEmail(email) {
+  const normalized = String(email || "").toLowerCase();
+  return isValidEmail(normalized) && normalized.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
 // Generate a random token for QR codes
@@ -146,6 +153,36 @@ async function getOwnedItem(req, itemId, columns = "id, user_id") {
   return item;
 }
 
+// Ensure logged-in user can access the report thread (item owner or finder email match)
+async function getAccessibleReportContext(req, res, reportId) {
+  const id = Number(reportId);
+  if (!Number.isFinite(id)) return { error: "not_found" };
+
+  const { data: report } = await supabase
+    .from("finder_reports")
+    .select("id, item_id, finder_name, finder_email, message, status, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!report) return { error: "not_found" };
+
+  const { data: item } = await supabase.from("items").select("id, user_id, item_name").eq("id", report.item_id).maybeSingle();
+  if (!item) return { error: "not_found" };
+
+  const { data: owner } = await supabase.from("users").select("id, full_name, email").eq("id", item.user_id).maybeSingle();
+  if (!owner) return { error: "not_found" };
+
+  const currentUser = res.locals.currentUser || null;
+  if (!currentUser) return { error: "forbidden" };
+
+  const currentEmail = String(currentUser.email || "").toLowerCase();
+  const finderEmail = String(report.finder_email || "").toLowerCase();
+  const isOwner = currentUser.id === item.user_id;
+  const isFinder = currentEmail === finderEmail;
+
+  if (!isOwner && !isFinder) return { error: "forbidden" };
+  return { report, item, owner, currentUser, isOwner, isFinder };
+}
+
 // Block access if not logged in
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
@@ -168,6 +205,7 @@ app.post("/signup", async (req, res) => {
     const full_name = sanitize(req.body.full_name);
     const email = sanitize(req.body.email).toLowerCase();
     const password = req.body.password || "";
+    const confirm_password = req.body.confirm_password || "";
 
     // Validate inputs
     if (full_name.length < 2 || full_name.length > 100) {
@@ -178,8 +216,16 @@ app.post("/signup", async (req, res) => {
       setFlash(req, "error", "Please enter a valid email address.");
       return res.redirect("/signup");
     }
+    if (!isSchoolEmail(email)) {
+      setFlash(req, "error", `Use your school email (@${ALLOWED_EMAIL_DOMAIN}).`);
+      return res.redirect("/signup");
+    }
     if (password.length < 8) {
       setFlash(req, "error", "Password must be at least 8 characters.");
+      return res.redirect("/signup");
+    }
+    if (password !== confirm_password) {
+      setFlash(req, "error", "Passwords do not match.");
       return res.redirect("/signup");
     }
 
@@ -216,6 +262,10 @@ app.post("/login", async (req, res) => {
   try {
     const email = (req.body.email || "").toLowerCase().trim();
     const password = req.body.password || "";
+    if (!isSchoolEmail(email)) {
+      setFlash(req, "error", `Use your school email (@${ALLOWED_EMAIL_DOMAIN}).`);
+      return res.redirect("/login");
+    }
 
     // Find user by email
     const { data: user } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
@@ -248,7 +298,7 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// ── Dashboard (view items + register new ones) ──
+// ── Dashboard (view items + reports) ──
 
 app.get("/dashboard", requireAuth, async (req, res) => {
   try {
@@ -298,15 +348,20 @@ app.get("/dashboard", requireAuth, async (req, res) => {
   }
 });
 
-// Register a new item
-app.post("/dashboard", requireAuth, upload.single("image"), async (req, res) => {
+// Register item page
+app.get("/items/new", requireAuth, (req, res) => {
+  res.render("new_item", { categories: CATEGORIES });
+});
+
+// Shared handler so old and new form actions both work
+async function handleRegisterItem(req, res) {
   try {
     const item_name = sanitize(req.body.item_name);
     const item_description = sanitize(req.body.item_description);
     const category = req.body.category || "Other";
 
     if (!item_name || item_name.length > 150) {
-      return flashRedirect(req, res, "/dashboard", "error", "Item name is required (max 150 characters).");
+      return flashRedirect(req, res, "/items/new", "error", "Item name is required (max 150 characters).");
     }
 
     // Generate unique token and QR code
@@ -331,19 +386,22 @@ app.post("/dashboard", requireAuth, upload.single("image"), async (req, res) => 
     });
 
     if (error) {
-      return flashRedirect(req, res, "/dashboard", "error", "Failed to register item.");
+      return flashRedirect(req, res, "/items/new", "error", "Failed to register item.");
     }
 
     return flashRedirect(req, res, "/dashboard", "success", "Item registered and QR generated.");
   } catch (err) {
     console.error("Register item error:", err);
-    return flashRedirect(req, res, "/dashboard", "error", "Something went wrong.");
+    return flashRedirect(req, res, "/items/new", "error", "Something went wrong.");
   }
-});
+}
 
-// ── Lost Board (public page showing items marked as lost) ──
+app.post("/items/new", requireAuth, upload.single("image"), handleRegisterItem);
+app.post("/dashboard", requireAuth, upload.single("image"), handleRegisterItem);
 
-app.get("/lost", async (req, res) => {
+// ── Lost Board (login required) ──
+
+app.get("/lost", requireAuth, async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
     const filterCategory = req.query.category || "";
@@ -382,7 +440,7 @@ app.get("/lost", async (req, res) => {
 });
 
 // Submit a sighting report for a lost item
-app.post("/lost/:id/sighting", async (req, res) => {
+app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
   try {
     const reporter_name = sanitize(req.body.reporter_name);
     const reporter_email = sanitize(req.body.reporter_email);
@@ -399,6 +457,9 @@ app.post("/lost/:id/sighting", async (req, res) => {
     // Validate inputs
     const validationError = getReportValidationError(reporter_name, reporter_email, message);
     if (validationError) return flashRedirect(req, res, "/lost", "error", validationError);
+    if (!isSchoolEmail(reporter_email)) {
+      return flashRedirect(req, res, "/lost", "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
+    }
 
     // Save report
     const { error } = await supabase.from("finder_reports").insert({
@@ -450,6 +511,9 @@ app.post("/found/:token", async (req, res) => {
     // Basic validation
     const validationError = getReportValidationError(finder_name, finder_email, message);
     if (validationError) return flashRedirect(req, res, `/found/${req.params.token}`, "error", validationError);
+    if (!isSchoolEmail(finder_email)) {
+      return flashRedirect(req, res, `/found/${req.params.token}`, "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
+    }
 
     // Save report to database
     const { error } = await supabase.from("finder_reports").insert({
@@ -472,9 +536,9 @@ app.post("/found/:token", async (req, res) => {
   }
 });
 
-// ── Found Items Board (finders post items they picked up) ──
+// ── Found Items Board (login required) ──
 
-app.get("/found-items", async (req, res) => {
+app.get("/found-items", requireAuth, async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
     const filterCategory = req.query.category || "";
@@ -498,7 +562,7 @@ app.get("/found-items", async (req, res) => {
 });
 
 // Post a found item to the board
-app.post("/found-items", upload.single("image"), async (req, res) => {
+app.post("/found-items", requireAuth, upload.single("image"), async (req, res) => {
   try {
     const finder_name = sanitize(req.body.finder_name);
     const finder_email = sanitize(req.body.finder_email);
@@ -510,6 +574,7 @@ app.post("/found-items", upload.single("image"), async (req, res) => {
     // Validate
     if (finder_name.length < 2) return flashRedirect(req, res, "/found-items", "error", "Name is too short.");
     if (!isValidEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", "Invalid email.");
+    if (!isSchoolEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
     if (!item_name || item_name.length > 150) return flashRedirect(req, res, "/found-items", "error", "Item name is required (max 150 chars).");
 
     // Upload image if provided (reuse helper)
@@ -558,6 +623,147 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
     console.error("Claim error:", err);
     setFlash(req, "error", "Something went wrong.");
     return res.redirect("/found-items");
+  }
+});
+
+// ── Messages (owner <-> finder chat per report) ──
+
+app.get("/messages", requireAuth, async (req, res) => {
+  try {
+    const currentEmail = String(res.locals.currentUser?.email || "").toLowerCase();
+
+    const { data: ownerItems } = await supabase.from("items").select("id, item_name, user_id").eq("user_id", req.session.userId);
+    const ownerItemIds = (ownerItems || []).map((i) => i.id);
+    const ownerItemIdSet = new Set(ownerItemIds);
+
+    let ownerReports = [];
+    if (ownerItemIds.length > 0) {
+      const { data } = await supabase
+        .from("finder_reports")
+        .select("id, item_id, finder_name, finder_email, message, status, created_at")
+        .in("item_id", ownerItemIds)
+        .order("created_at", { ascending: false });
+      ownerReports = data || [];
+    }
+
+    const { data: finderReportsData } = await supabase
+      .from("finder_reports")
+      .select("id, item_id, finder_name, finder_email, message, status, created_at")
+      .eq("finder_email", currentEmail)
+      .order("created_at", { ascending: false });
+    const finderReports = finderReportsData || [];
+
+    const mergedMap = new Map();
+    for (const r of [...ownerReports, ...finderReports]) {
+      if (!mergedMap.has(r.id)) mergedMap.set(r.id, r);
+    }
+    const reports = [...mergedMap.values()];
+
+    const allItemIds = [...new Set(reports.map((r) => r.item_id))];
+    let itemsById = {};
+    if (allItemIds.length > 0) {
+      const { data: items } = await supabase.from("items").select("id, item_name, user_id").in("id", allItemIds);
+      itemsById = Object.fromEntries((items || []).map((i) => [i.id, i]));
+    }
+
+    const ownerUserIds = [...new Set(Object.values(itemsById).map((i) => i.user_id))];
+    let usersById = {};
+    if (ownerUserIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", ownerUserIds);
+      usersById = Object.fromEntries((users || []).map((u) => [u.id, u]));
+    }
+
+    const conversations = reports
+      .map((r) => {
+        const item = itemsById[r.item_id];
+        if (!item) return null;
+
+        const role = ownerItemIdSet.has(r.item_id) ? "owner" : "finder";
+        const counterpartName = role === "owner"
+          ? (r.finder_name || r.finder_email || "Finder")
+          : (usersById[item.user_id]?.full_name || "Owner");
+
+        return {
+          id: r.id,
+          item_name: item.item_name,
+          preview: r.message,
+          status: r.status,
+          role,
+          counterpart_name: counterpartName,
+          created_at: r.created_at
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.render("messages", { conversations });
+  } catch (err) {
+    console.error("Messages list error:", err);
+    return flashRedirect(req, res, "/dashboard", "error", "Failed to load messages.");
+  }
+});
+
+app.get("/messages/:reportId", requireAuth, async (req, res) => {
+  try {
+    const ctx = await getAccessibleReportContext(req, res, req.params.reportId);
+    if (ctx.error === "not_found") return res.status(404).render("not_found");
+    if (ctx.error === "forbidden") return res.status(403).send("Forbidden");
+
+    const { report, item, owner, currentUser, isOwner } = ctx;
+
+    const { data: rows } = await supabase
+      .from("report_messages")
+      .select("id, report_id, sender_user_id, message, created_at")
+      .eq("report_id", report.id)
+      .order("created_at", { ascending: true });
+    const messages = rows || [];
+
+    const senderIds = [...new Set(messages.map((m) => m.sender_user_id).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", senderIds);
+      senderMap = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
+    }
+
+    const counterpartName = isOwner ? (report.finder_name || report.finder_email || "Finder") : owner.full_name;
+
+    res.render("message_thread", {
+      report,
+      item,
+      messages: messages.map((m) => ({
+        ...m,
+        is_me: m.sender_user_id === currentUser.id,
+        sender_name: senderMap[m.sender_user_id] || "User"
+      })),
+      counterpartName
+    });
+  } catch (err) {
+    console.error("Message thread error:", err);
+    return flashRedirect(req, res, "/messages", "error", "Failed to load conversation.");
+  }
+});
+
+app.post("/messages/:reportId", requireAuth, async (req, res) => {
+  try {
+    const ctx = await getAccessibleReportContext(req, res, req.params.reportId);
+    if (ctx.error === "not_found") return res.status(404).render("not_found");
+    if (ctx.error === "forbidden") return res.status(403).send("Forbidden");
+
+    const text = sanitize(req.body.message);
+    if (!text) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Message cannot be empty.");
+    if (text.length > 1000) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Message is too long (max 1000 chars).");
+
+    const { error } = await supabase.from("report_messages").insert({
+      report_id: ctx.report.id,
+      sender_user_id: req.session.userId,
+      message: text
+    });
+    if (error) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Failed to send message.");
+
+    return flashRedirect(req, res, `/messages/${ctx.report.id}`, "success", "Message sent.");
+  } catch (err) {
+    console.error("Send message error:", err);
+    return flashRedirect(req, res, `/messages/${req.params.reportId}`, "error", "Something went wrong.");
   }
 });
 
@@ -632,9 +838,13 @@ app.post("/account", requireAuth, async (req, res) => {
 // Change password
 app.post("/account/password", requireAuth, async (req, res) => {
   try {
-    const { current_password, new_password } = req.body;
+    const { current_password, new_password, confirm_new_password } = req.body;
     if (!new_password || new_password.length < 8) {
       setFlash(req, "error", "New password must be at least 8 characters.");
+      return res.redirect("/account");
+    }
+    if (new_password !== (confirm_new_password || "")) {
+      setFlash(req, "error", "New passwords do not match.");
       return res.redirect("/account");
     }
 

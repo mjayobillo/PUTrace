@@ -1,0 +1,28 @@
+<%- include('_header') %>
+
+<section class="card">
+  <h2>Your Conversations</h2>
+
+  <% if (!conversations || conversations.length === 0) { %>
+    <div class="center-text empty-state">
+      <div class="empty-icon">...</div>
+      <p>No conversations yet.</p>
+    </div>
+  <% } else { %>
+    <div class="conversation-list">
+      <% conversations.forEach((c) => { %>
+        <a href="/messages/<%= c.id %>" class="conversation-card">
+          <div class="conversation-head">
+            <strong><%= c.item_name %></strong>
+            <span class="badge <%= c.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= c.status === 'open' ? 'Open' : 'Resolved' %></span>
+          </div>
+          <p class="muted">With: <%= c.counterpart_name %></p>
+          <p class="conversation-preview"><%= c.preview %></p>
+          <p class="muted"><small><%= new Date(c.created_at).toLocaleString('en-US') %></small></p>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('_footer') %>
