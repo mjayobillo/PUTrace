@@ -54,6 +54,68 @@ function generateToken() {
   return crypto.randomBytes(16).toString("hex");
 }
 
+// Hash tokens before storing in DB
+function hashToken(token) {
+  return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+}
+
+function buildResetLink(token) {
+  return `${BASE_URL}/reset-password/${token}`;
+}
+
+// Send password reset email (uses Resend when configured, otherwise logs link)
+async function sendPasswordResetEmail(email, resetLink) {
+  const apiKey = process.env.RESEND_API_KEY || "";
+  const from = process.env.RESEND_FROM_EMAIL || "";
+
+  if (!apiKey || !from) {
+    console.log(`[PUTrace password reset link] ${email}: ${resetLink}`);
+    return false;
+  }
+
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: "PUTrace Password Reset",
+        html: `<p>You requested a password reset for PUTrace.</p>
+               <p><a href="${resetLink}">Reset your password</a></p>
+               <p>If you did not request this, you can ignore this email.</p>`
+      })
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.error("Resend API error:", body);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Password reset email error:", err);
+    return false;
+  }
+}
+
+async function getValidResetTokenRecord(rawToken) {
+  const tokenHash = hashToken(rawToken);
+  const nowIso = new Date().toISOString();
+  const { data } = await supabase
+    .from("password_reset_tokens")
+    .select("id, user_id, expires_at, used_at, created_at")
+    .eq("token_hash", tokenHash)
+    .is("used_at", null)
+    .gt("expires_at", nowIso)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data || null;
+}
+
 // Make filenames safe for downloads
 function safeFileName(value) {
   return (value || "item").replace(/[^a-z0-9-_]/gi, "-").toLowerCase();
@@ -98,6 +160,7 @@ app.use(
 app.use(async (req, res, next) => {
   res.locals.currentUser = null;
   res.locals.flash = req.session.flash || null;
+  res.locals.currentPath = req.path || "/";
   delete req.session.flash;
 
   if (req.session.userId) {
@@ -256,7 +319,7 @@ app.post("/signup", async (req, res) => {
 
 // ── Login / Logout ──
 
-app.get("/login", (req, res) => res.render("login"));
+app.get("/login", (req, res) => res.render("login", { loginConfirmed: false, redirectTo: "" }));
 
 app.post("/login", async (req, res) => {
   try {
@@ -283,12 +346,78 @@ app.post("/login", async (req, res) => {
 
     // Save user session
     req.session.userId = user.id;
-    setFlash(req, "success", "Welcome back!");
-    return res.redirect("/dashboard");
+    return res.render("login", { loginConfirmed: true, redirectTo: "/dashboard" });
   } catch (err) {
     console.error("Login error:", err);
     setFlash(req, "error", "Something went wrong.");
     return res.redirect("/login");
+  }
+});
+
+app.get("/forgot-password", (req, res) => res.render("forgot_password"));
+
+app.post("/forgot-password", async (req, res) => {
+  try {
+    const email = sanitize(req.body.email).toLowerCase();
+    if (!isSchoolEmail(email)) {
+      return flashRedirect(req, res, "/forgot-password", "error", `Use your school email (@${ALLOWED_EMAIL_DOMAIN}).`);
+    }
+
+    const { data: user } = await supabase.from("users").select("id, email").eq("email", email).maybeSingle();
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const tokenHash = hashToken(rawToken);
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+      await supabase.from("password_reset_tokens").insert({
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt
+      });
+
+      const resetLink = buildResetLink(rawToken);
+      await sendPasswordResetEmail(email, resetLink);
+    }
+
+    return flashRedirect(req, res, "/login", "success", "If your account exists, a password reset link has been sent.");
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    return flashRedirect(req, res, "/forgot-password", "error", "Something went wrong.");
+  }
+});
+
+app.get("/reset-password/:token", async (req, res) => {
+  try {
+    const record = await getValidResetTokenRecord(req.params.token);
+    if (!record) return flashRedirect(req, res, "/forgot-password", "error", "This reset link is invalid or expired.");
+    return res.render("reset_password", { token: req.params.token });
+  } catch (err) {
+    console.error("Reset password page error:", err);
+    return flashRedirect(req, res, "/forgot-password", "error", "Something went wrong.");
+  }
+});
+
+app.post("/reset-password/:token", async (req, res) => {
+  try {
+    const { new_password, confirm_new_password } = req.body;
+    if (!new_password || new_password.length < 8) {
+      return flashRedirect(req, res, `/reset-password/${req.params.token}`, "error", "New password must be at least 8 characters.");
+    }
+    if (new_password !== (confirm_new_password || "")) {
+      return flashRedirect(req, res, `/reset-password/${req.params.token}`, "error", "New passwords do not match.");
+    }
+
+    const record = await getValidResetTokenRecord(req.params.token);
+    if (!record) return flashRedirect(req, res, "/forgot-password", "error", "This reset link is invalid or expired.");
+
+    const hash = await bcrypt.hash(new_password, 10);
+    await supabase.from("users").update({ password_hash: hash }).eq("id", record.user_id);
+    await supabase.from("password_reset_tokens").update({ used_at: new Date().toISOString() }).eq("id", record.id);
+
+    return flashRedirect(req, res, "/login", "success", "Password reset complete. You can now sign in.");
+  } catch (err) {
+    console.error("Reset password submit error:", err);
+    return flashRedirect(req, res, `/reset-password/${req.params.token}`, "error", "Something went wrong.");
   }
 });
 
@@ -860,6 +989,29 @@ app.post("/account/password", requireAuth, async (req, res) => {
     console.error("Password change error:", err);
     setFlash(req, "error", "Something went wrong.");
     return res.redirect("/account");
+  }
+});
+
+app.post("/account/password/reset-link", requireAuth, async (req, res) => {
+  try {
+    const email = String(res.locals.currentUser?.email || "").toLowerCase();
+    if (!email) return flashRedirect(req, res, "/account", "error", "Unable to find your account email.");
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    await supabase.from("password_reset_tokens").insert({
+      user_id: req.session.userId,
+      token_hash: tokenHash,
+      expires_at: expiresAt
+    });
+
+    await sendPasswordResetEmail(email, buildResetLink(rawToken));
+    return flashRedirect(req, res, "/account", "success", "Password reset link sent to your email.");
+  } catch (err) {
+    console.error("Account reset link error:", err);
+    return flashRedirect(req, res, "/account", "error", "Something went wrong.");
   }
 });
 

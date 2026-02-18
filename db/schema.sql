@@ -55,3 +55,15 @@ create table if not exists public.report_messages (
 
 create index if not exists report_messages_report_id_created_at_idx
   on public.report_messages(report_id, created_at);
+
+create table if not exists public.password_reset_tokens (
+  id bigserial primary key,
+  user_id uuid not null references public.users(id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists password_reset_tokens_user_id_created_at_idx
+  on public.password_reset_tokens(user_id, created_at);

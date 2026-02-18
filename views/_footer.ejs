@@ -10,10 +10,12 @@
         if (input.type === 'password') {
           input.type = 'text';
           toggle.title = 'Hide password';
+          toggle.textContent = 'Hide';
           toggle.style.opacity = '1';
         } else {
           input.type = 'password';
           toggle.title = 'Show password';
+          toggle.textContent = 'Show';
           toggle.style.opacity = '0.55';
         }
       }
@@ -36,9 +38,11 @@
       (function () {
         var modal = document.getElementById("success-modal");
         if (!modal) return;
+        var previousFocus = document.activeElement;
 
         function closeModal() {
           modal.style.display = "none";
+          if (previousFocus && typeof previousFocus.focus === "function") previousFocus.focus();
         }
 
         var closeBtn = document.getElementById("success-modal-close");
@@ -46,6 +50,7 @@
 
         if (closeBtn) closeBtn.addEventListener("click", closeModal);
         if (okBtn) okBtn.addEventListener("click", closeModal);
+        if (okBtn) okBtn.focus();
 
         modal.addEventListener("click", function (event) {
           if (event.target === modal) closeModal();
@@ -53,6 +58,20 @@
 
         document.addEventListener("keydown", function (event) {
           if (event.key === "Escape") closeModal();
+          if (event.key === "Tab") {
+            var focusable = [closeBtn, okBtn].filter(Boolean);
+            if (focusable.length === 0) return;
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+            var active = document.activeElement;
+            if (event.shiftKey && active === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && active === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          }
         });
       })();
     </script>

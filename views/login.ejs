@@ -1,7 +1,15 @@
 <%- include('_header') %>
 <section class="card narrow">
+  <% const isLoginConfirmed = typeof loginConfirmed !== 'undefined' && !!loginConfirmed; %>
+  <% if (isLoginConfirmed) { %>
+    <div class="flash success">Confirmed! Redirecting to your dashboard...</div>
+    <script>
+      setTimeout(function () {
+        window.location.href = "<%= (typeof redirectTo !== 'undefined' && redirectTo) ? redirectTo : '/dashboard' %>";
+      }, 1800);
+    </script>
+  <% } %>
   <div class="center-text" style="margin-bottom:1.5rem;">
-    <div style="font-size:3rem;margin-bottom:0.5rem;">👋</div>
     <h2>Welcome Back</h2>
     <p style="color:#888;font-size:0.9rem;">Sign in to manage your items</p>
   </div>
@@ -10,11 +18,23 @@
     <label>Password
       <div class="password-wrap">
         <input type="password" name="password" id="loginPassword" required placeholder="Enter your password" />
-        <span class="pw-toggle" onclick="togglePassword('loginPassword', this)" title="Show password">👁️</span>
+        <span class="pw-toggle" onclick="togglePassword('loginPassword', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePassword('loginPassword', this)}" title="Show password" role="button" tabindex="0">Show</span>
       </div>
     </label>
-    <button type="submit">Sign In</button>
+    <button type="submit" id="login-submit-btn">Sign In</button>
   </form>
+  <p class="center-text" style="margin-top:0.8rem;font-size:0.9rem;"><a href="/forgot-password">Forgot password?</a></p>
   <p class="center-text" style="margin-top:1rem;font-size:0.9rem;color:#888;">Don't have an account? <a href="/signup">Sign up</a></p>
 </section>
+<script>
+  (function () {
+    var form = document.querySelector('form[action="/login"]');
+    var btn = document.getElementById("login-submit-btn");
+    if (!form || !btn) return;
+    form.addEventListener("submit", function () {
+      btn.textContent = "Checking...";
+      btn.disabled = true;
+    });
+  })();
+</script>
 <%- include('_footer') %>

@@ -37,10 +37,28 @@
 
       <h3>Change Password</h3>
       <form method="post" action="/account/password">
-        <label>Current password <input type="password" name="current_password" required /></label>
-        <label>New password <small style="font-weight:400;color:#aaa;">(min 8 chars)</small> <input type="password" name="new_password" required minlength="8" /></label>
-        <label>Confirm new password <input type="password" name="confirm_new_password" required minlength="8" /></label>
+        <label>Current password
+          <div class="password-wrap">
+            <input type="password" name="current_password" id="currentPassword" required />
+            <span class="pw-toggle" onclick="togglePassword('currentPassword', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePassword('currentPassword', this)}" title="Show password" role="button" tabindex="0">Show</span>
+          </div>
+        </label>
+        <label>New password <small style="font-weight:400;color:#aaa;">(min 8 chars)</small>
+          <div class="password-wrap">
+            <input type="password" name="new_password" id="newPassword" required minlength="8" />
+            <span class="pw-toggle" onclick="togglePassword('newPassword', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePassword('newPassword', this)}" title="Show password" role="button" tabindex="0">Show</span>
+          </div>
+        </label>
+        <label>Confirm new password
+          <div class="password-wrap">
+            <input type="password" name="confirm_new_password" id="confirmNewPassword" required minlength="8" />
+            <span class="pw-toggle" onclick="togglePassword('confirmNewPassword', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePassword('confirmNewPassword', this)}" title="Show password" role="button" tabindex="0">Show</span>
+          </div>
+        </label>
         <button type="submit" class="btn-sm btn-outline">Update Password</button>
+      </form>
+      <form method="post" action="/account/password/reset-link">
+        <button type="submit" class="btn-sm">Send Password Reset Link</button>
       </form>
     </div>
   </div>

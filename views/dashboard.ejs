@@ -10,6 +10,19 @@
   <h2 class="dashboard-title">Welcome, <%= firstName %></h2>
 </div>
 
+<section class="card dashboard-actions-card">
+  <div class="section-head">
+    <h2 class="section-title">Quick Actions</h2>
+  </div>
+  <div class="dashboard-toolbar">
+    <div class="dashboard-quick-links">
+      <a href="/lost" class="button btn-sm btn-outline">Lost Board</a>
+      <a href="/found-items" class="button btn-sm btn-outline">Found Board</a>
+    </div>
+    <a href="/items/new" class="button">Register New Item</a>
+  </div>
+</section>
+
 <div class="stats-bar">
   <div class="stat-card">
     <div class="stat-number"><%= items.length %></div>
@@ -23,10 +36,6 @@
     <div class="stat-number"><%= resolvedReportsCount %></div>
     <div class="stat-label">Resolved</div>
   </div>
-</div>
-
-<div class="dashboard-actions">
-  <a href="/items/new" class="button">Register New Item</a>
 </div>
 
 <section class="card">
@@ -71,7 +80,7 @@
       <% if (search || filterCategory || filterStatus) { %>
         <p>No items match your filters. <a href="/dashboard">Clear filters</a></p>
       <% } else { %>
-        <p>No items registered yet. Add your first item above!</p>
+        <p>No items registered yet. Use "Register New Item" to add your first one.</p>
       <% } %>
     </div>
   <% } else { %>

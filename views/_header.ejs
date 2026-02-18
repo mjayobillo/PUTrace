@@ -7,6 +7,14 @@
       <link rel="stylesheet" href="/styles.css" />
     </head>
     <body>
+      <a class="skip-link" href="#main-content">Skip to main content</a>
+      <%
+        const path = currentPath || '/';
+        const isActive = (href) => path === href || path.startsWith(href + '/');
+        const unreadCount = (typeof unreadMessagesCount === 'number' && Number.isFinite(unreadMessagesCount))
+          ? unreadMessagesCount
+          : 0;
+      %>
       <header class="site-header">
         <div class="brand">
           <img src="/putrace_circular_logo.png" alt="PUTrace Logo" class="logo-img" />
@@ -15,32 +23,41 @@
             <p class="sub">Campus Item Recovery System</p>
           </div>
         </div>
-        <nav>
-          <a href="/">Home</a>
-          <a href="/lost">Lost Board</a>
-          <a href="/found-items">Found Board</a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="/" class="<%= path === '/' ? 'active' : '' %>">Home</a>
           <% if (currentUser) { %>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/items/new">Register Item</a>
-            <a href="/messages">Messages</a>
-            <a href="/account">Account</a>
-            <a href="/logout">Logout</a>
+            <div class="site-nav-group">
+              <a href="/dashboard" class="<%= isActive('/dashboard') ? 'active' : '' %>">Dashboard</a>
+              <a href="/items/new" class="<%= isActive('/items/new') ? 'active' : '' %>">Register Item</a>
+              <a href="/messages" class="<%= isActive('/messages') ? 'active' : '' %>">
+                Messages
+                <% if (unreadCount > 0) { %>
+                  <span class="nav-badge"><%= unreadCount %></span>
+                <% } %>
+              </a>
+            </div>
+            <div class="site-nav-group secondary">
+              <a href="/account" class="<%= isActive('/account') ? 'active' : '' %>">Account</a>
+              <a href="/logout">Logout</a>
+            </div>
           <% } else { %>
-            <a href="/login">Login</a>
-            <a href="/signup" class="nav-cta">Sign up</a>
+            <div class="site-nav-group secondary">
+              <a href="/login" class="<%= isActive('/login') ? 'active' : '' %>">Login</a>
+              <a href="/signup" class="nav-cta">Sign up</a>
+            </div>
           <% } %>
         </nav>
       </header>
 
-      <main>
+      <main id="main-content">
         <% if (flash) { %>
           <% if (flash.type === 'success') { %>
             <div id="success-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-title">
               <div class="modal-box">
                 <button type="button" class="modal-close" id="success-modal-close" aria-label="Close confirmation">x</button>
-                <h3 id="success-title" style="margin-bottom:0.7rem;">Action Completed</h3>
-                <p style="color:#555;"><%= flash.message %></p>
-                <div style="margin-top:1rem;">
+                <h3 id="success-title" class="success-title">Action Completed</h3>
+                <p class="success-message"><%= flash.message %></p>
+                <div class="success-actions">
                   <button type="button" class="btn-sm" id="success-modal-ok">OK</button>
                 </div>
               </div>
