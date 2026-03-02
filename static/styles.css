@@ -504,7 +504,7 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 .badge-none { background: #e8ecf6; color: #666; }
 .badge-active { background: #d4edda; color: #155724; }
 .badge-lost { background: #f8d7da; color: #721c24; }
-.badge-category { background: #e8ecf6; color: #3a56e4; margin-bottom: 0.4rem; }
+.badge-category { background: #e8ecf6; color: #3a56e4; }
 .btn-warning {
   background: linear-gradient(135deg, #f39c12, #e67e22);
   box-shadow: 0 2px 8px rgba(243,156,18,0.25);
@@ -595,9 +595,8 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   margin-top: 0.25rem;
 }
 .report-card-actions .button,
-.report-card-actions button { flex: 1; text-align: center; }
-.report-card-actions .inline-form { flex: 1; display: flex; }
-.report-card-actions .inline-form .button { flex: 1; }
+.report-card-actions button { text-align: center; }
+.report-card-actions .inline-form { display: flex; }
 .muted { color: var(--text-600); }
 .action-col-min { min-width: 90px; }
 .action-stack { display: flex; gap: 0.4rem; flex-wrap: wrap; }

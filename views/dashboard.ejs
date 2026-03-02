@@ -89,23 +89,35 @@
       <p>No activity yet. When someone scans your QR code or you claim a found item, it will appear here.</p>
     </div>
   <% } else { %>
+    <%
+      const allActivity = [
+        ...reports.map(r => ({ ...r, _type: 'report' })),
+        ...(foundActivity || []).map(fp => ({ ...fp, _type: 'found' }))
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    %>
     <div class="report-card-list">
-      <% reports.forEach((r) => { %>
-        <%- include('_dashboard_report_row', { r }) %>
-      <% }) %>
-      <% (foundActivity || []).forEach((fp) => { %>
-        <div class="report-card">
-          <div class="report-card-header">
-            <strong class="report-item-name"><%= fp.item_name %></strong>
-            <span class="badge badge-active">Found Board</span>
+      <% allActivity.forEach((item) => { %>
+        <% if (item._type === 'report') { %>
+          <%- include('_dashboard_report_row', { r: item }) %>
+        <% } else { %>
+          <%
+            const fpDate = new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const fpTime = new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          %>
+          <div class="report-card">
+            <div class="report-card-header">
+              <strong class="report-item-name"><%= item.item_name %></strong>
+              <span class="badge badge-active">Found Board</span>
+            </div>
+            <div class="report-card-body">
+              <p class="report-finder"><span class="report-label"><%= item.role === 'claimer' ? 'You claimed' : 'Claimed by' %>:</span> <%= item.other_name %></p>
+              <p style="font-size:0.78rem;color:#bbb;margin-top:0.4rem;"><%= fpDate %>, <%= fpTime %></p>
+            </div>
+            <div class="report-card-actions">
+              <a href="/found-messages/<%= item.id %>" class="button btn-sm btn-outline">Open Chat</a>
+            </div>
           </div>
-          <div class="report-card-body">
-            <p class="report-finder"><span class="report-label"><%= fp.role === 'claimer' ? 'You claimed this' : 'Someone claimed your post' %>:</span> <%= fp.other_name %></p>
-          </div>
-          <div class="report-card-actions">
-            <a href="/found-messages/<%= fp.id %>" class="button btn-sm btn-outline">Open Chat</a>
-          </div>
-        </div>
+        <% } %>
       <% }) %>
     </div>
   <% } %>
