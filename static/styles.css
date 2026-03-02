@@ -149,11 +149,9 @@ select:focus-visible,
 }
 .nav-boards-group {
   border-left: 1px solid rgba(255,255,255,0.18);
-  border-right: 1px solid rgba(255,255,255,0.18);
   padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-right: 0.3rem;
   margin-left: 0.15rem;
-  margin-right: 0.15rem;
 }
 .site-nav-group.secondary {
   margin-left: 0.6rem;

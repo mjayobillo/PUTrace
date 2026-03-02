@@ -24,6 +24,8 @@
         <span class="info-label">Member Since</span>
         <span class="info-value"><%= new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
       </div>
+      <hr style="margin:1.25rem 0;border:none;border-top:1px solid #f0f2f5;">
+      <a href="/logout" class="btn-danger-block">Sign Out</a>
     </div>
 
     <div>
@@ -80,12 +82,6 @@
       <div class="stat-label">Resolved</div>
     </div>
   </div>
-</section>
-
-<section class="card">
-  <h3 style="margin-bottom:0.5rem;">Sign Out</h3>
-  <p style="color:#888;font-size:0.9rem;margin-bottom:1.25rem;">You'll be returned to the home page.</p>
-  <a href="/logout" class="btn-danger-block">Sign Out</a>
 </section>
 
 <%- include('_footer') %>
