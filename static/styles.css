@@ -80,14 +80,16 @@ select:focus-visible,
 
 /* ===== Header ===== */
 .site-header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: rgba(18, 24, 52, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   color: #fff;
   padding: 0 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 70px;
-  box-shadow: 0 2px 20px rgba(0,0,0,0.15);
+  border-bottom: 1px solid rgba(255,255,255,0.09);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -374,8 +376,9 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   animation: heroGlow 12s ease-in-out infinite alternate-reverse;
 }
 @keyframes heroGlow { from { transform: translate(0, 0); } to { transform: translate(30px, -30px); } }
-.hero h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.8rem; position: relative; animation: fadeInUp 0.6s ease 0.2s backwards; }
+.hero h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.8rem; position: relative; animation: fadeInUp 0.6s ease 0.2s backwards; line-height: 1.15; }
 .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 600px; margin: 0 auto 2rem; position: relative; animation: fadeInUp 0.6s ease 0.35s backwards; }
+.hero-trust { font-size: 0.8rem !important; opacity: 0.55 !important; margin-top: 1.5rem !important; margin-bottom: 0 !important; letter-spacing: 0.02em; }
 .hero .button { font-size: 1.1rem; padding: 1rem 2.5rem; position: relative; z-index: 1; animation: fadeInUp 0.6s ease 0.5s backwards; }
 .hero-actions {
   display: inline-flex;

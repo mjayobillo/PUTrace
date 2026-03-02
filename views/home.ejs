@@ -1,26 +1,27 @@
 <%- include('_header') %>
 
 <section class="hero">
-  <h2>Never Lose What Matters</h2>
-  <p>Tag your belongings with unique QR codes. When someone finds your lost item, they can instantly reach you.</p>
+  <h2>Your lost item,<br>back in your hands.</h2>
+  <p>Stick a QR code on anything you own. If it gets lost on campus, whoever finds it can reach you in minutes.</p>
   <div class="hero-actions">
     <% if (currentUser) { %>
       <a class="button" href="/dashboard">Go to Dashboard</a>
       <a class="button hero-secondary-btn" href="/lost">Lost Board</a>
       <a class="button hero-secondary-btn" href="/found-items">Found Board</a>
     <% } else { %>
-      <a class="button" href="/signup">Sign Up Free</a>
+      <a class="button" href="/signup">Get Started Free</a>
       <a class="button hero-secondary-btn" href="/login">Login</a>
     <% } %>
   </div>
+  <p class="hero-trust">Built for Pan Pacific University &middot; No app needed &middot; Works with any item</p>
 </section>
 
 <!-- ── Proof of Experience ── -->
 <section class="proof-section">
   <div class="proof-header">
     <span class="proof-label">Real scenario</span>
-    <h2>What happens when someone finds your item</h2>
-    <p>No app to download. Just scan a QR code and log in to report a find.</p>
+    <h2>Here's what actually happens</h2>
+    <p>From a lost item to a returned one &mdash; no guard office visits required.</p>
   </div>
   <div class="proof-flow">
 
@@ -35,7 +36,7 @@
           <div class="proof-sticker-label">Scan to return this item</div>
         </div>
       </div>
-      <p class="proof-step-label">Finder scans the QR sticker</p>
+      <p class="proof-step-label">A QR sticker on the item links back to you</p>
     </div>
 
     <div class="proof-arrow"><i data-lucide="chevron-right"></i></div>
@@ -57,7 +58,7 @@
           <div class="proof-cta-mock">Report Found Item</div>
         </div>
       </div>
-      <p class="proof-step-label">Owner's contact page opens instantly</p>
+      <p class="proof-step-label">Your contact info appears immediately</p>
     </div>
 
     <div class="proof-arrow"><i data-lucide="chevron-right"></i></div>
@@ -75,7 +76,7 @@
           <div class="proof-submit-mock">Send Report</div>
         </div>
       </div>
-      <p class="proof-step-label">Finder submits a report</p>
+      <p class="proof-step-label">Finder logs in and submits a report</p>
     </div>
 
     <div class="proof-arrow"><i data-lucide="chevron-right"></i></div>
@@ -94,9 +95,10 @@
             </div>
           </div>
           <div class="proof-open-chat-mock">Open Chat</div>
+          <div style="text-align:center;margin-top:0.4rem;font-size:0.62rem;font-weight:700;color:#15803d;">&#10003; Item recovered</div>
         </div>
       </div>
-      <p class="proof-step-label">Owner is notified &amp; can reply</p>
+      <p class="proof-step-label">You chat, meet up, and get your item back</p>
     </div>
 
   </div>
@@ -105,33 +107,33 @@
 <div class="feature-grid">
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="qr-code"></i></div>
-    <h3>Generate QR Codes</h3>
-    <p>Create unique QR codes for each of your items. Print them, stick them on, and you're protected.</p>
+    <h3>Stick it once, protected forever</h3>
+    <p>Print a QR sticker for each item. That's your entire setup &mdash; no app, no manual form.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="scan-search"></i></div>
-    <h3>Instant Discovery</h3>
-    <p>When someone finds your item, one scan reveals how to reach you — just log in and report.</p>
+    <h3>No awkward "is this yours?"</h3>
+    <p>One scan shows the finder exactly who to contact &mdash; no guessing, no social media hunting.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="message-circle"></i></div>
-    <h3>Direct Messaging</h3>
-    <p>Chat directly with the finder through a private message thread — coordinate the return of your item in real time.</p>
+    <h3>No need to visit the guard office</h3>
+    <p>Message the finder inside the app to set up a pickup &mdash; private, quick, and on your schedule.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="graduation-cap"></i></div>
-    <h3>Built for Campus</h3>
-    <p>Designed for students who lose things around campus — laptops, bottles, IDs, and more.</p>
+    <h3>Made for how campus works</h3>
+    <p>Bottles, IDs, laptops, bags &mdash; built around the things students actually lose between classes.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="clipboard-list"></i></div>
-    <h3>Lost Board</h3>
-    <p>Mark your item as lost and post it to the campus board so other students can report sightings.</p>
+    <h3>Let the whole campus help you look</h3>
+    <p>Mark your item as lost. Students who spot it can send you a sighting report in seconds.</p>
   </div>
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="package-open"></i></div>
-    <h3>Found Board</h3>
-    <p>Found something that isn't yours? Post it on the Found Board so the owner can claim it.</p>
+    <h3>Found it? Returning it is easy now.</h3>
+    <p>Post it to the Found Board. The owner claims it, you hand it over &mdash; good deed done.</p>
   </div>
 </div>
 

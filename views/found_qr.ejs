@@ -41,7 +41,7 @@
   <div class="center-text" style="margin-bottom:1rem;">
     <h3>✉️ Send a Message to the Owner</h3>
     <p style="color:#888;font-size:0.85rem;">Let them know you found their item</p>
-    <% if (currentUser) { %><p style="color:#3a56e4;font-size:0.8rem;margin-top:0.3rem;">Sending as <strong><%= currentUser.full_name %></strong> — <a href="/account">not you?</a></p><% } %>
+    <% if (currentUser) { %><p style="color:#3a56e4;font-size:0.8rem;margin-top:0.3rem;">Sending as <strong><%= currentUser.full_name %></strong> — <a href="/logout?redirect=<%= encodeURIComponent('/login?redirect=' + encodeURIComponent('/found/' + item.token)) %>">not you?</a></p><% } %>
   </div>
   <form id="qr-report-form" method="post" action="/found/<%= item.token %>">
     <label>Your name <input name="finder_name" required placeholder="Your full name" value="<%= currentUser ? currentUser.full_name : '' %>" <%= currentUser ? 'readonly' : '' %> /></label>

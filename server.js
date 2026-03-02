@@ -471,8 +471,9 @@ app.post("/reset-password/:token", async (req, res) => {
 });
 
 app.get("/logout", (req, res) => {
+  const redirect = req.query.redirect || "/";
   req.session.destroy(() => {
-    res.redirect("/");
+    res.redirect(redirect);
   });
 });
 
