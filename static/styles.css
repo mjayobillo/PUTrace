@@ -152,7 +152,6 @@ select:focus-visible,
   border-radius: 999px;
   background: rgba(255,255,255,0.85);
 }
-.mobile-nav-boards { display: none; }
 .site-nav a.nav-cta {
   background: #3a56e4;
   color: #fff;
@@ -528,11 +527,6 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   gap: 0.8rem;
   flex-wrap: wrap;
   margin-bottom: 0;
-}
-.dashboard-quick-links {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
 }
 .dashboard-form { max-width: 500px; }
 .field-note { font-weight: 400; color: #999; }
@@ -968,15 +962,6 @@ tr:hover td { background: #fafbfd; }
     padding-top: 0.4rem;
     margin-top: 0.4rem;
   }
-  .mobile-nav-boards {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 0.4rem;
-    border-top: 1px solid rgba(255,255,255,0.15);
-    padding-top: 0.4rem;
-    margin-top: 0.4rem;
-  }
   .site-nav a {
     display: block;
     width: 100%;
@@ -1000,12 +985,6 @@ tr:hover td { background: #fafbfd; }
   .stat-card { min-width: auto; }
   .dashboard-toolbar {
     align-items: stretch;
-  }
-  .dashboard-quick-links {
-    width: 100%;
-  }
-  .dashboard-quick-links .button {
-    flex: 1;
   }
   .dashboard-toolbar > .button {
     width: 100%;
