@@ -85,7 +85,7 @@ function emailTemplate(bodyHtml) {
           </tr>
           <tr>
             <td style="padding:20px 32px;background:#f8f9fc;border-top:1px solid #eef0f6;text-align:center;color:#888;font-size:0.8rem;">
-              PUTrace &mdash; Campus Lost &amp; Found &bull; Pan Pacific University
+              PUTrace &mdash; Campus Lost &amp; Found
             </td>
           </tr>
         </table>
