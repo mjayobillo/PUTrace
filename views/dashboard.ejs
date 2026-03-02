@@ -4,6 +4,7 @@
   const firstName = currentUser.full_name.split(' ')[0];
   const openReportsCount = reports.filter((r) => r.status === 'open').length;
   const resolvedReportsCount = reports.filter((r) => r.status === 'resolved').length;
+  const totalActivity = reports.length + (foundActivity || []).length;
 %>
 
 <div class="dashboard-top">
@@ -81,16 +82,30 @@
 </section>
 
 <section class="card">
-  <h2>Finder Reports</h2>
-  <% if (!reports || reports.length === 0) { %>
+  <h2>Activity</h2>
+  <% if (totalActivity === 0) { %>
     <div class="center-text empty-state">
       <div class="empty-icon">...</div>
-      <p>No reports yet. When someone scans your QR code, their report will appear here.</p>
+      <p>No activity yet. When someone scans your QR code or you claim a found item, it will appear here.</p>
     </div>
   <% } else { %>
     <div class="report-card-list">
       <% reports.forEach((r) => { %>
         <%- include('_dashboard_report_row', { r }) %>
+      <% }) %>
+      <% (foundActivity || []).forEach((fp) => { %>
+        <div class="report-card">
+          <div class="report-card-header">
+            <strong class="report-item-name"><%= fp.item_name %></strong>
+            <span class="badge badge-active">Found Board</span>
+          </div>
+          <div class="report-card-body">
+            <p class="report-finder"><span class="report-label"><%= fp.role === 'claimer' ? 'You claimed this' : 'Someone claimed your post' %>:</span> <%= fp.other_name %></p>
+          </div>
+          <div class="report-card-actions">
+            <a href="/found-messages/<%= fp.id %>" class="button btn-sm btn-outline">Open Chat</a>
+          </div>
+        </div>
       <% }) %>
     </div>
   <% } %>

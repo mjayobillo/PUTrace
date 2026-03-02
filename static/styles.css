@@ -163,15 +163,21 @@ select:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 999px;
   margin-left: 0.35rem;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #172554;
-  background: #bfdbfe;
+  color: #fff;
+  background: #e74c3c;
+  box-shadow: 0 0 0 2px rgba(231,76,60,0.3);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(231,76,60,0.3); }
+  50% { box-shadow: 0 0 0 5px rgba(231,76,60,0); }
 }
 
 /* ===== Main ===== */

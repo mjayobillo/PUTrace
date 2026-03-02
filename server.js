@@ -200,6 +200,21 @@ app.use(async (req, res, next) => {
         unread = count || 0;
       }
     }
+    // Also count unread found_post_messages where user is involved but didn't send
+    const { data: involvedPosts } = await supabase
+      .from("found_posts")
+      .select("id")
+      .eq("status", "claimed")
+      .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
+    const involvedPostIds = (involvedPosts || []).map((p) => p.id);
+    if (involvedPostIds.length > 0) {
+      const { count: foundUnread } = await supabase
+        .from("found_post_messages")
+        .select("id", { count: "exact", head: true })
+        .in("found_post_id", involvedPostIds)
+        .neq("sender_user_id", req.session.userId);
+      unread += foundUnread || 0;
+    }
     res.locals.unreadMessagesCount = unread;
   }
   next();
@@ -490,6 +505,25 @@ app.get("/dashboard", requireAuth, async (req, res) => {
       reports = data || [];
     }
 
+    // Get found post activity (posts this user has filed or claimed)
+    const { data: foundActivity } = await supabase
+      .from("found_posts")
+      .select("id, item_name, status, finder_user_id, claimer_user_id, created_at")
+      .eq("status", "claimed")
+      .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`)
+      .order("created_at", { ascending: false });
+
+    const enrichedFoundActivity = await Promise.all((foundActivity || []).map(async (fp) => {
+      const isClaimer = fp.claimer_user_id === req.session.userId;
+      const otherUserId = isClaimer ? fp.finder_user_id : fp.claimer_user_id;
+      let otherName = isClaimer ? "Finder" : "Claimer";
+      if (otherUserId) {
+        const { data: other } = await supabase.from("users").select("full_name").eq("id", otherUserId).maybeSingle();
+        if (other?.full_name) otherName = other.full_name;
+      }
+      return { ...fp, role: isClaimer ? "claimer" : "finder", other_name: otherName };
+    }));
+
     // Count open reports per item
     const itemNameMap = Object.fromEntries(filteredItems.map((i) => [i.id, i.item_name]));
     const openCounts = {};
@@ -500,6 +534,7 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     res.render("dashboard", {
       items: filteredItems.map((i) => ({ ...i, open_reports: openCounts[i.id] || 0 })),
       reports: reports.map((r) => ({ ...r, item_name: itemNameMap[r.item_id] || "Unknown item" })),
+      foundActivity: enrichedFoundActivity,
       baseUrl: BASE_URL,
       categories: CATEGORIES,
       search, filterCategory, filterStatus
