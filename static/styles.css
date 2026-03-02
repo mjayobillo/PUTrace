@@ -376,8 +376,8 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   animation: heroGlow 12s ease-in-out infinite alternate-reverse;
 }
 @keyframes heroGlow { from { transform: translate(0, 0); } to { transform: translate(30px, -30px); } }
-.hero h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.8rem; position: relative; animation: fadeInUp 0.6s ease 0.2s backwards; line-height: 1.15; }
-.hero p { font-size: 1.15rem; opacity: 0.9; max-width: 600px; margin: 0 auto 2rem; position: relative; animation: fadeInUp 0.6s ease 0.35s backwards; }
+.hero h2 { font-size: 2.4rem; font-weight: 700; margin-bottom: 0.9rem; position: relative; animation: fadeInUp 0.6s ease 0.2s backwards; line-height: 1.2; letter-spacing: -0.02em; }
+.hero p { font-size: 1.1rem; opacity: 0.85; max-width: 560px; margin: 0 auto 2rem; position: relative; animation: fadeInUp 0.6s ease 0.35s backwards; line-height: 1.65; }
 .hero-trust { font-size: 0.8rem !important; opacity: 0.55 !important; margin-top: 1.5rem !important; margin-bottom: 0 !important; letter-spacing: 0.02em; }
 .hero .button { font-size: 1.1rem; padding: 1rem 2.5rem; position: relative; z-index: 1; animation: fadeInUp 0.6s ease 0.5s backwards; }
 .hero-actions {
@@ -411,16 +411,16 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   border-radius: 16px;
   padding: 2rem 1.5rem;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
-  border: 1px solid rgba(0,0,0,0.04);
-  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 3px 12px rgba(0,0,0,0.05);
+  border: 1px solid rgba(58,86,228,0.07);
+  transition: transform 0.25s, box-shadow 0.25s;
   animation: fadeInUp 0.5s ease backwards;
 }
 .feature-card:nth-child(1) { animation-delay: 0.1s; }
 .feature-card:nth-child(2) { animation-delay: 0.2s; }
 .feature-card:nth-child(3) { animation-delay: 0.3s; }
 .feature-card:nth-child(4) { animation-delay: 0.4s; }
-.feature-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.12); }
+.feature-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(58,86,228,0.1); }
 .feature-icon { display:flex; align-items:center; justify-content:center; margin-bottom: 1rem; transition: transform 0.3s; }
 .feature-icon svg { width: 3rem !important; height: 3rem !important; color: #3a56e4; stroke-width: 1.5; }
 .feature-card:hover .feature-icon svg { transform: scale(1.15); }
@@ -440,15 +440,17 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   font-weight: 800;
   box-shadow: 0 4px 14px rgba(58,86,228,0.35);
 }
-.feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: #1a1a2e; }
-.feature-card p { font-size: 0.9rem; color: #666; }
+.feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.55rem; color: #1a1a2e; line-height: 1.35; }
+.feature-card p { font-size: 0.88rem; color: #5a6480; line-height: 1.6; }
 
 /* ===== Home page narrative bridges ===== */
 .section-bridge {
   text-align: center;
-  margin: 0.5rem 0 1.5rem;
-  color: #666;
-  font-size: 0.95rem;
+  margin: 0 0 2rem;
+  padding: 0.5rem 1rem;
+  color: #5a6480;
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 .section-bridge p { margin: 0; }
 .home-cta-footer {
@@ -459,8 +461,8 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   color: #fff;
   margin-bottom: 2rem;
 }
-.home-cta-footer h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.6rem; }
-.home-cta-footer p { opacity: 0.75; margin-bottom: 1.5rem; font-size: 1rem; }
+.home-cta-footer h2 { font-size: 1.7rem; font-weight: 700; margin-bottom: 0.6rem; letter-spacing: -0.01em; }
+.home-cta-footer p { opacity: 0.72; margin-bottom: 1.5rem; font-size: 0.98rem; line-height: 1.6; }
 
 /* ===== Stats Bar ===== */
 .stats-bar { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
@@ -734,7 +736,7 @@ tr:hover td { background: #fafbfd; }
 
 /* ===== Proof of Experience Section ===== */
 .proof-section {
-  margin: 2.5rem 0;
+  margin: 2.8rem 0;
   padding: 3rem 2rem;
   background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
   border-radius: 20px;
@@ -753,8 +755,8 @@ tr:hover td { background: #fafbfd; }
   border-radius: 999px;
   margin-bottom: 0.75rem;
 }
-.proof-header h2 { font-size: 1.6rem; margin-bottom: 0.5rem; color: #1a2340; }
-.proof-header p { color: #666; font-size: 0.95rem; }
+.proof-header h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: #1a2340; letter-spacing: -0.01em; }
+.proof-header p { color: #5a6480; font-size: 0.92rem; line-height: 1.65; }
 .proof-flow {
   display: flex;
   align-items: flex-start;
@@ -1010,10 +1012,14 @@ tr:hover td { background: #fafbfd; }
   .site-nav a.active { box-shadow: none; }
   .site-nav a.nav-cta { margin-left: 0; animation: none; box-shadow: none; }
   main { padding: 0 0.8rem; margin: 1rem auto; }
-  .hero { padding: 2rem 1.2rem; border-radius: 14px; }
-  .hero h2 { font-size: 1.6rem; }
-  .hero p { font-size: 1rem; }
+  .hero { padding: 2.5rem 1.2rem; border-radius: 14px; }
+  .hero h2 { font-size: 1.75rem; }
+  .hero p { font-size: 0.98rem; }
   .hero .button { font-size: 0.95rem; padding: 0.8rem 1.8rem; }
+  .hero-actions { gap: 0.5rem; }
+  .section-bridge { font-size: 0.88rem; padding: 0 0.5rem; margin-bottom: 1.5rem; }
+  .home-cta-footer { padding: 2.5rem 1.2rem; border-radius: 14px; }
+  .home-cta-footer h2 { font-size: 1.35rem; }
   .card { padding: 1.2rem; border-radius: 12px; }
   .narrow { max-width: 100%; }
   .account-grid { grid-template-columns: 1fr; }
@@ -1052,8 +1058,13 @@ tr:hover td { background: #fafbfd; }
   .logo-img { height: 36px; width: auto; max-width: 120px; }
   .site-nav a { padding: 0.72rem 0.9rem; font-size: 0.95rem; }
   .hero h2 { font-size: 1.3rem; }
+  .hero p { font-size: 0.92rem; }
   .card { padding: 1rem; }
   .stat-card .stat-number { font-size: 1.5rem; }
+  .proof-header h2 { font-size: 1.2rem; }
+  .home-cta-footer h2 { font-size: 1.15rem; }
+  .home-cta-footer { padding: 2rem 1rem; }
+  .feature-card { padding: 1.25rem 1rem; }
 }
 
 /* ===== Accessibility: Reduced Motion ===== */
