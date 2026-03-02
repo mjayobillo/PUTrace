@@ -626,6 +626,15 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 .filter-search { flex: 1; min-width: 180px; }
 .filter-category { min-width: 140px; }
 .filter-status { min-width: 130px; }
+@media (max-width: 600px) {
+  .row-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .filter-search { grid-column: 1 / -1; min-width: 0; }
+  .filter-category, .filter-status { min-width: 0; }
+  .row-filters button, .row-filters a.button { grid-column: 1 / -1; width: 100%; text-align: center; }
+}
 .empty-state { padding: 2rem; color: #999; }
 .empty-icon { font-size: 3rem; margin-bottom: 0.5rem; }
 .item-head {
