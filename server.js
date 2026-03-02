@@ -685,8 +685,12 @@ app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
 
 // ── QR Code Scan Page (shown when someone scans a QR sticker) ──
 
-app.get("/found/:token", requireAuth, async (req, res) => {
+app.get("/found/:token", async (req, res) => {
   try {
+    if (!req.session.userId) {
+      setFlash(req, "error", "To report this item as found, please log in first.");
+      return res.redirect(`/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+    }
     const { data: item } = await supabase.from("items").select("*").eq("token", req.params.token).maybeSingle();
     if (!item) return res.status(404).render("not_found");
 
@@ -699,7 +703,11 @@ app.get("/found/:token", requireAuth, async (req, res) => {
 });
 
 // Handle the finder's report form from the QR page
-app.post("/found/:token", requireAuth, async (req, res) => {
+app.post("/found/:token", async (req, res) => {
+  if (!req.session.userId) {
+    setFlash(req, "error", "To report this item as found, please log in first.");
+    return res.redirect(`/login?redirect=${encodeURIComponent(`/found/${req.params.token}`)}`);
+  }
   try {
     const finder_name = sanitize(req.body.finder_name);
     const finder_email = sanitize(req.body.finder_email);
