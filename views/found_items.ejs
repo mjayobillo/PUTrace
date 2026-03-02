@@ -111,7 +111,12 @@
             <p style="margin-top:0.8rem;font-size:0.85rem;color:#aaa;text-align:center;">This item has been claimed.</p>
           <% } %>
         <% } else if (currentUser && post.finder_user_id === currentUser.id) { %>
-          <p style="margin-top:0.8rem;font-size:0.85rem;color:#aaa;text-align:center;">This is your post.</p>
+          <div style="display:flex;gap:0.5rem;margin-top:0.8rem;">
+            <p style="flex:1;font-size:0.85rem;color:#aaa;margin:0;line-height:1.4;">This is your post.</p>
+            <form method="post" action="/found-items/<%= post.id %>/delete" onsubmit="return confirm('Remove this post from the board?')" style="flex-shrink:0;">
+              <button type="submit" class="btn-sm btn-danger">Remove</button>
+            </form>
+          </div>
         <% } else if (currentUser) { %>
           <button type="button" class="btn-sm btn-success" style="width:100%;margin-top:0.8rem;" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= post.finder_email %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">This is mine &mdash; Claim it</button>
         <% } else { %>

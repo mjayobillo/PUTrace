@@ -63,46 +63,41 @@ function buildResetLink(token) {
   return `${BASE_URL}/reset-password/${token}`;
 }
 
-// Send password reset email (uses SendGrid when configured, otherwise logs link)
+// Generic email sender (uses SendGrid when configured, otherwise logs to console)
+async function sendEmail(to, subject, htmlBody) {
+  const apiKey = process.env.SENDGRID_API_KEY || "";
+  const from = process.env.SENDGRID_FROM_EMAIL || "";
+  if (!apiKey || !from) {
+    console.log(`[PUTrace email] To: ${to} | Subject: ${subject}`);
+    return false;
+  }
+  const resp = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: from, name: "PUTrace" },
+      subject,
+      content: [{ type: "text/html", value: htmlBody }]
+    })
+  });
+  if (!resp.ok) console.error("SendGrid error:", await resp.text());
+  return resp.ok;
+}
+
+// Send password reset email
 async function sendPasswordResetEmail(email, resetLink) {
   const apiKey = process.env.SENDGRID_API_KEY || "";
   const from = process.env.SENDGRID_FROM_EMAIL || "";
-
   if (!apiKey || !from) {
     console.log(`[PUTrace password reset link] ${email}: ${resetLink}`);
     return false;
   }
-
-  try {
-    const resp = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email }] }],
-        from: { email: from, name: "PUTrace" },
-        subject: "PUTrace Password Reset",
-        content: [{
-          type: "text/html",
-          value: `<p>You requested a password reset for PUTrace.</p>
-                  <p><a href="${resetLink}">Reset your password</a></p>
-                  <p>This link expires in 30 minutes.</p>
-                  <p>If you did not request this, you can ignore this email.</p>`
-        }]
-      })
-    });
-    if (!resp.ok) {
-      const body = await resp.text();
-      console.error("SendGrid error:", body);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("Password reset email error:", err);
-    return false;
-  }
+  return sendEmail(email, "PUTrace Password Reset",
+    `<p>You requested a password reset for PUTrace.</p>
+     <p><a href="${resetLink}">Reset your password</a></p>
+     <p>This link expires in 30 minutes.</p>
+     <p>If you did not request this, you can ignore this email.</p>`);
 }
 
 async function getValidResetTokenRecord(rawToken) {
@@ -685,6 +680,23 @@ app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
     if (error) {
       return flashRedirect(req, res, "/lost", "error", "Failed to submit sighting.");
     }
+
+    // Email the item owner
+    try {
+      const { data: owner } = await supabase.from("users").select("email, full_name").eq("id", item.user_id).single();
+      if (owner?.email) {
+        await sendEmail(owner.email, `Someone spotted your item on PUTrace — ${item.item_name}`, `
+          <p>Hi ${owner.full_name || 'there'},</p>
+          <p><strong>${reporter_name}</strong> (${reporter_email}) reported a sighting of your lost item <strong>${item.item_name}</strong>.</p>
+          ${location ? `<p><strong>Where:</strong> ${location}</p>` : ''}
+          <p><strong>Details:</strong> ${message}</p>
+          <p><a href="${BASE_URL}/messages">View the report on PUTrace</a></p>
+        `);
+      }
+    } catch (emailErr) {
+      console.error("Sighting notification email failed:", emailErr);
+    }
+
     return flashRedirect(req, res, "/lost", "success", `Sighting reported for "${item.item_name}". The owner has been notified!`);
   } catch (err) {
     console.error("Sighting error:", err);
@@ -946,11 +958,12 @@ app.post("/found-messages/:postId/resolve", requireAuth, async (req, res) => {
 app.post("/found-messages/:postId", requireAuth, async (req, res) => {
   try {
     const postId = Number(req.params.postId);
-    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, claimer_user_id").eq("id", postId).maybeSingle();
+    const { data: post } = await supabase.from("found_posts").select("id, status, finder_user_id, claimer_user_id").eq("id", postId).maybeSingle();
     if (!post) return res.status(404).render("not_found");
 
     const userId = req.session.userId;
     if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).send("Forbidden");
+    if (post.status === "returned") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "This conversation is closed — the item has already been returned.");
 
     const text = sanitize(req.body.message || "");
     if (!text) return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Message cannot be empty.");
@@ -1143,6 +1156,10 @@ app.post("/messages/:reportId", requireAuth, async (req, res) => {
     if (ctx.error === "not_found") return res.status(404).render("not_found");
     if (ctx.error === "forbidden") return res.status(403).send("Forbidden");
 
+    if (ctx.report.status === REPORT_STATUS.RESOLVED) {
+      return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "This conversation is closed — the report has been resolved.");
+    }
+
     const text = sanitize(req.body.message);
     if (!text) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Message cannot be empty.");
     if (text.length > 1000) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Message is too long (max 1000 chars).");
@@ -1297,6 +1314,33 @@ app.post("/item/:id/status", requireAuth, async (req, res) => {
   };
   setFlash(req, "success", statusMessages[item_status] || `Status updated.`);
   return res.redirect("/dashboard");
+});
+
+// ── Delete Found Post ──
+
+app.post("/found-items/:id/delete", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.id);
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status, item_name, image_url").eq("id", postId).maybeSingle();
+    if (!post || post.finder_user_id !== req.session.userId) {
+      setFlash(req, "error", "Post not found.");
+      return res.redirect("/found-items");
+    }
+    if (post.status !== "unclaimed") {
+      setFlash(req, "error", `Cannot delete \"${post.item_name}\" — it has already been claimed. Reject the claim first.`);
+      return res.redirect("/found-items");
+    }
+    if (post.image_url) {
+      const fileName = post.image_url.split("/").pop().split("?")[0];
+      await supabase.storage.from("item-images").remove([fileName]);
+    }
+    await supabase.from("found_posts").delete().eq("id", postId);
+    setFlash(req, "success", "Found post removed.");
+    return res.redirect("/found-items");
+  } catch (err) {
+    console.error("Delete found post error:", err);
+    return flashRedirect(req, res, "/found-items", "error", "Something went wrong.");
+  }
 });
 
 // ── Delete Item ──
