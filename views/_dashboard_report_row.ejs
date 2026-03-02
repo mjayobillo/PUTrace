@@ -1,17 +1,31 @@
+<%
+  const isSighting = r.message && r.message.startsWith('[Sighting]');
+  const displayMessage = isSighting ? r.message.replace(/^\[Sighting\]\s*/, '') : r.message;
+  const reportDate = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const reportTime = new Date(r.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+%>
 <div class="report-card">
   <div class="report-card-header">
     <strong class="report-item-name"><%= r.item_name %></strong>
-    <% if (r.status === 'open') { %>
-      <span class="badge badge-open">Open</span>
-    <% } else { %>
-      <span class="badge badge-resolved">Resolved</span>
-    <% } %>
+    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+      <% if (isSighting) { %>
+        <span class="badge badge-category">Sighting</span>
+      <% } else { %>
+        <span class="badge badge-category">QR Report</span>
+      <% } %>
+      <% if (r.status === 'open') { %>
+        <span class="badge badge-open">Open</span>
+      <% } else { %>
+        <span class="badge badge-resolved">Resolved</span>
+      <% } %>
+    </div>
   </div>
   <div class="report-card-body">
-    <p class="report-finder"><span class="report-label">Finder:</span> <%= r.finder_name %> &mdash; <small class="muted"><%= r.finder_email %></small></p>
-    <p class="report-message"><span class="report-label">Message:</span> <%= r.message %>
+    <p class="report-finder"><span class="report-label"><%= isSighting ? 'Reporter' : 'Finder' %>:</span> <%= r.finder_name %> &mdash; <small class="muted"><%= r.finder_email %></small></p>
+    <p class="report-message"><span class="report-label">Message:</span> <%= displayMessage %>
       <% if (r.location_hint) { %><br/><small class="muted"><%= r.location_hint %></small><% } %>
     </p>
+    <p style="font-size:0.78rem;color:#bbb;margin-top:0.4rem;"><%= reportDate %>, <%= reportTime %></p>
   </div>
   <div class="report-card-actions">
     <a href="/messages/<%= r.id %>" class="button btn-sm btn-outline">Open Chat</a>
