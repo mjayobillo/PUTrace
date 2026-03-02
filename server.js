@@ -739,6 +739,7 @@ app.post("/found/:token", async (req, res) => {
     if (!isSchoolEmail(finder_email)) {
       return flashRedirect(req, res, `/found/${req.params.token}`, "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
     }
+    if (!location_hint) return flashRedirect(req, res, `/found/${req.params.token}`, "error", "Please specify where you found the item.");
 
     // Save report to database
     const { error } = await supabase.from("finder_reports").insert({
@@ -799,6 +800,7 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
     if (!isValidEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", "That doesn't look like a valid email address.");
     if (!isSchoolEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
     if (!item_name || item_name.length > 150) return flashRedirect(req, res, "/found-items", "error", "Item name is required (max 150 chars).");
+    if (!location_found) return flashRedirect(req, res, "/found-items", "error", "Please specify where you found the item.");
 
     // Upload image if provided (reuse helper)
     const image_url = req.file ? await uploadImage(req.file.buffer, "found") : null;
