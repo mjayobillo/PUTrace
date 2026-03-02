@@ -64,7 +64,7 @@
           <p class="lost-card-desc"><%= item.item_description || 'No description provided' %></p>
           <div class="lost-card-meta">
             <span>Posted by <strong><%= item.owner_first_name %></strong></span>
-            <span><%= new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></span>
+            <span><%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></span>
           </div>
         </div>
         <div class="lost-card-form-panel">

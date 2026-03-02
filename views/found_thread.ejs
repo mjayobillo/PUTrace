@@ -23,7 +23,7 @@
         <div class="chat-bubble <%= m.is_me ? 'mine' : 'theirs' %>">
           <div class="chat-meta"><%= m.is_me ? 'You' : m.sender_name %></div>
           <div><%= m.message %></div>
-          <div class="chat-time"><small><%= new Date(m.created_at).toLocaleString('en-US') %></small></div>
+          <div class="chat-time"><small><%= new Date(m.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></small></div>
         </div>
       <% }) %>
     <% } %>

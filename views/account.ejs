@@ -22,7 +22,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">Member Since</span>
-        <span class="info-value"><%= new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+        <span class="info-value"><%= new Date(createdAt).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' }) %></span>
       </div>
       <hr style="margin:1.25rem 0;border:none;border-top:1px solid #f0f2f5;">
       <a href="/logout" class="btn-danger-block">Sign Out</a>

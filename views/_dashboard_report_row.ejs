@@ -1,8 +1,8 @@
 <%
   const isSighting = r.message && r.message.startsWith('[Sighting]');
   const displayMessage = isSighting ? r.message.replace(/^\[Sighting\]\s*/, '') : r.message;
-  const reportDate = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const reportTime = new Date(r.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const reportDate = new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' });
+  const reportTime = new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' });
 %>
 <div class="report-card">
   <div class="report-card-header">

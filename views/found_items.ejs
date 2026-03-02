@@ -101,7 +101,7 @@
           <% if (post.location_found) { %>
             <span>&#183; <%= post.location_found %></span>
           <% } %>
-          <span>&#183; <%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>, <%= new Date(post.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %></span>
+          <span>&#183; <%= new Date(post.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>, <%= new Date(post.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %></span>
         </div>
         <% if (post.status === 'claimed') { %>
           <% const isInvolved = currentUser && (post.finder_user_id === currentUser.id || post.claimer_user_id === currentUser.id); %>

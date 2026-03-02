@@ -101,8 +101,8 @@
           <%- include('_dashboard_report_row', { r: item }) %>
         <% } else { %>
           <%
-            const fpDate = new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const fpTime = new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const fpDate = new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' });
+            const fpTime = new Date(item.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' });
           %>
           <div class="report-card">
             <div class="report-card-header">

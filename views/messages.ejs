@@ -20,7 +20,7 @@
           </div>
           <p class="muted">With: <%= c.counterpart_name %></p>
           <p class="conversation-preview"><%= (c.preview || '').replace(/^\[Sighting\]\s*/, '') %></p>
-          <p class="muted"><small><%= new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>, <%= new Date(c.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %></small></p>
+          <p class="muted"><small><%= new Date(c.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>, <%= new Date(c.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %></small></p>
         </a>
       <% }) %>
     </div>
