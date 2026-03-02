@@ -43,6 +43,10 @@
                 <% } %>
               </a>
             </div>
+            <div class="site-nav-group mobile-nav-boards">
+              <a href="/lost" class="<%= isActive('/lost') ? 'active' : '' %>">Lost Board</a>
+              <a href="/found-items" class="<%= isActive('/found-items') ? 'active' : '' %>">Found Board</a>
+            </div>
             <div class="site-nav-group secondary">
               <a href="/account" class="<%= isActive('/account') ? 'active' : '' %>">Account</a>
               <a href="/logout">Logout</a>
