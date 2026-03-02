@@ -443,6 +443,25 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: #1a1a2e; }
 .feature-card p { font-size: 0.9rem; color: #666; }
 
+/* ===== Home page narrative bridges ===== */
+.section-bridge {
+  text-align: center;
+  margin: 0.5rem 0 1.5rem;
+  color: #666;
+  font-size: 0.95rem;
+}
+.section-bridge p { margin: 0; }
+.home-cta-footer {
+  text-align: center;
+  padding: 3.5rem 2rem;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border-radius: 20px;
+  color: #fff;
+  margin-bottom: 2rem;
+}
+.home-cta-footer h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.6rem; }
+.home-cta-footer p { opacity: 0.75; margin-bottom: 1.5rem; font-size: 1rem; }
+
 /* ===== Stats Bar ===== */
 .stats-bar { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 .stat-card {

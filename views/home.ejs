@@ -2,7 +2,7 @@
 
 <section class="hero">
   <h2>Your lost item,<br>back in your hands.</h2>
-  <p>Stick a QR code on anything you own. If it gets lost on campus, whoever finds it can reach you in minutes.</p>
+  <p>Stick a QR code on anything you own. If it gets lost, whoever finds it can reach you in minutes &mdash; no phone calls, no guard office, no luck required.</p>
   <div class="hero-actions">
     <% if (currentUser) { %>
       <a class="button" href="/dashboard">Go to Dashboard</a>
@@ -19,9 +19,9 @@
 <!-- ── Proof of Experience ── -->
 <section class="proof-section">
   <div class="proof-header">
-    <span class="proof-label">Real scenario</span>
-    <h2>Here's what actually happens</h2>
-    <p>From a lost item to a returned one &mdash; no guard office visits required.</p>
+    <span class="proof-label">How it works</span>
+    <h2>From lost &mdash; to back in your hands.</h2>
+    <p>This is the exact sequence that happens when someone finds your item.</p>
   </div>
   <div class="proof-flow">
 
@@ -104,6 +104,10 @@
   </div>
 </section>
 
+<div class="section-bridge">
+  <p>That whole sequence works because of these pieces &mdash; each one built to remove a specific friction.</p>
+</div>
+
 <div class="feature-grid">
   <div class="feature-card">
     <div class="feature-icon"><i data-lucide="qr-code"></i></div>
@@ -136,5 +140,13 @@
     <p>Post it to the Found Board. The owner claims it, you hand it over &mdash; good deed done.</p>
   </div>
 </div>
+
+<% if (!currentUser) { %>
+<section class="home-cta-footer">
+  <h2>Ready to stop relying on luck?</h2>
+  <p>It takes about 2 minutes to register your first item.</p>
+  <a class="button" href="/signup">Get Started for Free</a>
+</section>
+<% } %>
 
 <%- include('_footer') %>
