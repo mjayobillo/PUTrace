@@ -80,16 +80,16 @@ select:focus-visible,
 
 /* ===== Header ===== */
 .site-header {
-  background: rgba(18, 24, 52, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(18, 24, 52, 0.97);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: #fff;
   padding: 0 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 70px;
-  border-bottom: 1px solid rgba(255,255,255,0.09);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   position: sticky;
   top: 0;
   z-index: 100;
