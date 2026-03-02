@@ -395,7 +395,7 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 }
 
 /* ===== Feature Grid ===== */
-.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
 .feature-card {
   background: #fff;
   border-radius: 16px;
