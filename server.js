@@ -333,15 +333,16 @@ app.post("/signup", async (req, res) => {
 
     // Hash password and create account
     const password_hash = await bcrypt.hash(password, 10);
-    const { error } = await supabase.from("users").insert({ full_name, email, password_hash });
+    const { data: newUser, error } = await supabase.from("users").insert({ full_name, email, password_hash }).select("id").single();
 
-    if (error) {
+    if (error || !newUser) {
       setFlash(req, "error", "Signup failed. Please try again.");
       return res.redirect("/signup");
     }
 
-    setFlash(req, "success", "Account created. Please login.");
-    return res.redirect("/login");
+    req.session.userId = newUser.id;
+    setFlash(req, "success", `Welcome to PUTrace, ${full_name.split(" ")[0]}!`);
+    return res.redirect("/dashboard");
   } catch (err) {
     console.error("Signup error:", err);
     setFlash(req, "error", "Something went wrong.");
