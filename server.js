@@ -840,6 +840,9 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
     }
 
     const claimerId = req.session.userId;
+    if (post.finder_user_id === claimerId) {
+      return flashRedirect(req, res, "/found-items", "error", "You can't claim your own found post.");
+    }
     await supabase.from("found_posts").update({ status: "claimed", claimer_user_id: claimerId }).eq("id", post.id);
 
     // Auto-create an opening message to kick off the thread

@@ -569,7 +569,7 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   transition: transform 0.2s;
 }
 .badge:hover { transform: scale(1.05); }
-.badge-open { background: #fff3cd; color: #856404; animation: pulse 2s ease-in-out infinite; }
+.badge-open { background: #fff3cd; color: #856404; }
 .badge-resolved { background: #d4edda; color: #155724; }
 .badge-none { background: #e8ecf6; color: #666; }
 .badge-active { background: #d4edda; color: #155724; }
