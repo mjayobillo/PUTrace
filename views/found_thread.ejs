@@ -7,6 +7,11 @@
   </div>
   <p class="muted">Chat with: <strong><%= counterpartName %></strong></p>
   <p class="muted" style="font-size:0.85rem;">Confirm ownership and arrange pickup below.</p>
+  <% if (isFinder && post.status === 'claimed') { %>
+    <form method="post" action="/found-messages/<%= post.id %>/unclaim" onsubmit="return confirm('Reject this claim? The post will become claimable again.')">
+      <button type="submit" class="button btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">Reject Claim</button>
+    </form>
+  <% } %>
 </section>
 
 <section class="card">

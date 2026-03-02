@@ -872,11 +872,27 @@ app.get("/found-messages/:postId", requireAuth, async (req, res) => {
     res.render("found_thread", {
       post,
       messages: messages.map((m) => ({ ...m, is_me: m.sender_user_id === userId, sender_name: senderMap[m.sender_user_id] || "User" })),
-      counterpartName
+      counterpartName,
+      isFinder: post.finder_user_id === userId
     });
   } catch (err) {
     console.error("Found thread error:", err);
     return flashRedirect(req, res, "/messages", "error", "Failed to load conversation.");
+  }
+});
+
+app.post("/found-messages/:postId/unclaim", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.postId);
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status").eq("id", postId).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+    if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
+    if (post.status !== "claimed") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Post is not currently claimed.");
+    await supabase.from("found_posts").update({ status: "unclaimed", claimer_user_id: null }).eq("id", postId);
+    return flashRedirect(req, res, "/found-items", "success", "Claim rejected. The post is now open again.");
+  } catch (err) {
+    console.error("Unclaim error:", err);
+    return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
   }
 });
 
