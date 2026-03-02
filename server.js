@@ -235,7 +235,7 @@ app.use(async (req, res, next) => {
     const { data: involvedPosts } = await supabase
       .from("found_posts")
       .select("id")
-      .in("status", ["claimed", "returned"])
+      .eq("status", "claimed")
       .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
     const involvedPostIds = (involvedPosts || []).map((p) => p.id);
     if (involvedPostIds.length > 0) {
@@ -461,6 +461,9 @@ app.post("/forgot-password", async (req, res) => {
       const resetLink = buildResetLink(rawToken);
       await sendPasswordResetEmail(email, resetLink);
     }
+
+    // Clean up expired/used tokens in the background
+    supabase.from("password_reset_tokens").delete().lt("expires_at", new Date().toISOString()).then(() => {}).catch(() => {});
 
     return flashRedirect(req, res, "/login", "success", "If your account exists, a password reset link has been sent.");
   } catch (err) {
@@ -808,6 +811,28 @@ app.post("/found/:token", async (req, res) => {
     if (error) {
       return flashRedirect(req, res, `/found/${req.params.token}`, "error", "Failed to submit report.");
     }
+
+    // Email the item owner
+    try {
+      const { data: owner } = await supabase.from("users").select("email, full_name").eq("id", item.user_id).single();
+      if (owner?.email) {
+        await sendEmail(owner.email, `Your item was found — ${item.item_name}`,
+          `<h2 style="margin:0 0 16px;font-size:1.2rem;">&#127881; Someone found your item!</h2>
+           <p>Hi <strong>${owner.full_name || 'there'}</strong>,</p>
+           <p><strong>${finder_name}</strong> (${finder_email}) scanned your QR sticker and reported finding your item <strong>${item.item_name}</strong>.</p>
+           <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+             <tr><td style="padding:8px 12px;background:#f8f9fc;border-radius:6px 6px 0 0;color:#666;font-size:0.85rem;width:110px;">Found by</td><td style="padding:8px 12px;background:#f8f9fc;border-radius:0 6px 0 0;">${finder_name} &lt;${finder_email}&gt;</td></tr>
+             ${location_hint ? `<tr><td style="padding:8px 12px;border-top:1px solid #eee;color:#666;font-size:0.85rem;">Where</td><td style="padding:8px 12px;border-top:1px solid #eee;">${location_hint}</td></tr>` : ''}
+             <tr><td style="padding:8px 12px;border-top:1px solid #eee;border-radius:0 0 0 6px;color:#666;font-size:0.85rem;">Message</td><td style="padding:8px 12px;border-top:1px solid #eee;border-radius:0 0 6px 0;">${message}</td></tr>
+           </table>
+           <p style="margin-top:20px;">
+             <a href="${BASE_URL}/messages" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">View in Messages</a>
+           </p>`);
+      }
+    } catch (emailErr) {
+      console.error("QR report notification email failed:", emailErr);
+    }
+
     return flashRedirect(req, res, `/found/${req.params.token}`, "success", "Report sent! The owner has been notified.");
   } catch (err) {
     console.error("QR report error:", err);
