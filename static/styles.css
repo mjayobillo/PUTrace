@@ -872,6 +872,7 @@ tr:hover td { background: #fafbfd; }
     box-sizing: border-box;
   }
   .site-nav a.active::before { display: none; }
+  .site-nav a.nav-cta { margin-left: 0; animation: none; box-shadow: none; }
   main { padding: 0 0.8rem; margin: 1rem auto; }
   .hero { padding: 2rem 1.2rem; border-radius: 14px; }
   .hero h2 { font-size: 1.6rem; }
