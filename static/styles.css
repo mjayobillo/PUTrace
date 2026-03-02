@@ -66,8 +66,8 @@ select:focus-visible,
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%, 100% { box-shadow: 0 2px 8px rgba(58,86,228,0.3); }
+  50% { box-shadow: 0 4px 18px rgba(58,86,228,0.65); }
 }
 @keyframes shimmer {
   0% { background-position: -200% 0; }
@@ -156,7 +156,7 @@ select:focus-visible,
   background: #3a56e4;
   color: #fff;
   margin-left: 0.5rem;
-  animation: pulse 3s ease-in-out infinite;
+  animation: pulse 2.5s ease-in-out infinite;
 }
 .site-nav a.nav-cta:hover { background: #2a3eb1; animation: none; }
 .nav-badge {
