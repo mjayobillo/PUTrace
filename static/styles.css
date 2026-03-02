@@ -351,6 +351,19 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   box-shadow: 0 2px 8px rgba(231,76,60,0.25);
 }
 .btn-danger:hover { box-shadow: 0 4px 16px rgba(231,76,60,0.35); }
+.btn-danger-block {
+  display: inline-block;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(231,76,60,0.22);
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.btn-danger-block:hover { box-shadow: 0 4px 16px rgba(231,76,60,0.38); transform: translateY(-1px); color: #fff; }
 .btn-success {
   background: linear-gradient(135deg, #27ae60, #1e8449);
   box-shadow: 0 2px 8px rgba(39,174,96,0.25);
@@ -1006,7 +1019,7 @@ tr:hover td { background: #fafbfd; }
   }
   .nav-hamburger { display: flex; padding: 0.55rem 0.9rem; font-size: 1.45rem; }
   .nav-messages-icon { display: flex; }
-  .nav-messages-group { display: none; }
+  .site-nav .nav-messages-group { display: none !important; }
   .site-header .brand { justify-content: flex-start; }
   .site-header h1 { font-size: 1.1rem; }
   .sub { display: none; }
