@@ -280,8 +280,9 @@ async function getAccessibleReportContext(req, res, reportId) {
 // Block access if not logged in
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
-    setFlash(req, "error", "Please login first.");
-    return res.redirect("/login");
+    setFlash(req, "error", "Please login to continue.");
+    const redirect = encodeURIComponent(req.originalUrl);
+    return res.redirect(`/login?redirect=${redirect}`);
   }
   next();
 }
@@ -350,12 +351,13 @@ app.post("/signup", async (req, res) => {
 
 // ── Login / Logout ──
 
-app.get("/login", (req, res) => res.render("login", { loginConfirmed: false, redirectTo: "" }));
+app.get("/login", (req, res) => res.render("login", { loginConfirmed: false, redirectTo: req.query.redirect || "" }));
 
 app.post("/login", async (req, res) => {
   try {
     const email = (req.body.email || "").toLowerCase().trim();
     const password = req.body.password || "";
+    const redirectTo = sanitize(req.body.redirectTo || "");
     if (!isSchoolEmail(email)) {
       setFlash(req, "error", `Use your school email (@${ALLOWED_EMAIL_DOMAIN}).`);
       return res.redirect("/login");
@@ -377,7 +379,8 @@ app.post("/login", async (req, res) => {
 
     // Save user session
     req.session.userId = user.id;
-    return res.render("login", { loginConfirmed: true, redirectTo: "/dashboard" });
+    const destination = (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) ? redirectTo : "/dashboard";
+    return res.render("login", { loginConfirmed: true, redirectTo: destination });
   } catch (err) {
     console.error("Login error:", err);
     setFlash(req, "error", "Something went wrong.");
@@ -647,7 +650,7 @@ app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
 
 // ── QR Code Scan Page (shown when someone scans a QR sticker) ──
 
-app.get("/found/:token", async (req, res) => {
+app.get("/found/:token", requireAuth, async (req, res) => {
   try {
     const { data: item } = await supabase.from("items").select("*").eq("token", req.params.token).maybeSingle();
     if (!item) return res.status(404).render("not_found");
@@ -661,7 +664,7 @@ app.get("/found/:token", async (req, res) => {
 });
 
 // Handle the finder's report form from the QR page
-app.post("/found/:token", async (req, res) => {
+app.post("/found/:token", requireAuth, async (req, res) => {
   try {
     const finder_name = sanitize(req.body.finder_name);
     const finder_email = sanitize(req.body.finder_email);

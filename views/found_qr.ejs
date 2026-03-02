@@ -7,7 +7,7 @@
 </section>
 
 <section class="card">
-  <h3>📦 Item Details</h3>
+  <h3><i data-lucide="package" class="inline-icon"></i> Item Details</h3>
   <% if (item.image_url) { %>
     <div class="item-image-wrap" style="margin-bottom:1rem;">
       <img src="<%= item.image_url %>" alt="<%= item.item_name %>" class="item-image" style="max-width:300px;" />
@@ -17,7 +17,7 @@
     <p style="color:#666;margin-bottom:1rem;"><strong>Description:</strong> <%= item.item_description %></p>
   <% } %>
 
-  <h3>👤 Owner Information</h3>
+  <h3><i data-lucide="user" class="inline-icon"></i> Owner Information</h3>
   <div class="owner-info">
     <div class="owner-info-item">
       <strong>Name:</strong>&nbsp; <%= owner.full_name %>
@@ -29,7 +29,7 @@
 
   <hr style="margin:1.5rem 0;border:none;border-top:1px solid #f0f2f5;">
 
-  <h3>📋 Return Instructions</h3>
+  <h3><i data-lucide="clipboard" class="inline-icon"></i> Return Instructions</h3>
   <ol style="padding-left:1.2rem;color:#555;line-height:2;">
     <li>Keep the item safe and secure</li>
     <li>Contact the owner using the info above, or submit a report below</li>
@@ -41,10 +41,11 @@
   <div class="center-text" style="margin-bottom:1rem;">
     <h3>✉️ Send a Message to the Owner</h3>
     <p style="color:#888;font-size:0.85rem;">Let them know you found their item</p>
+    <% if (currentUser) { %><p style="color:#3a56e4;font-size:0.8rem;margin-top:0.3rem;">Sending as <strong><%= currentUser.full_name %></strong> — <a href="/account">not you?</a></p><% } %>
   </div>
   <form id="qr-report-form" method="post" action="/found/<%= item.token %>">
-    <label>Your name <input name="finder_name" required placeholder="Your full name" /></label>
-    <label>Your email <input type="email" name="finder_email" required placeholder="you@email.com" /></label>
+    <label>Your name <input name="finder_name" required placeholder="Your full name" value="<%= currentUser ? currentUser.full_name : '' %>" <%= currentUser ? 'readonly' : '' %> /></label>
+    <label>Your email <input type="email" name="finder_email" required placeholder="you@panpacificu.edu.ph" value="<%= currentUser ? currentUser.email : '' %>" <%= currentUser ? 'readonly' : '' %> /></label>
     <label>Where did you find it? <small style="font-weight:400;color:#aaa;">(optional)</small> <input name="location_hint" placeholder="e.g. Library 2nd floor, Cafeteria" /></label>
     <label>Message <textarea name="message" rows="4" required placeholder="Hi! I found your item at..."></textarea></label>
     <button type="submit" class="btn-success">Send Report to Owner</button>

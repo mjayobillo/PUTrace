@@ -1,7 +1,7 @@
 <%- include('_header') %>
 
 <div style="text-align:center;margin-bottom:1.5rem;">
-  <h2 style="font-size:1.8rem;">🔎 Lost Items Board</h2>
+  <h2 style="font-size:1.8rem;"><i data-lucide="search" class="inline-icon"></i> Lost Items Board</h2>
   <p style="color:#888;max-width:500px;margin:0.5rem auto 0;">Browse items reported lost by PUTrace users. Seen one of these? Let the owner know!</p>
 </div>
 
@@ -9,7 +9,7 @@
   <form method="get" action="/lost" class="search-filters">
     <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:flex-end;">
       <label style="flex:1;min-width:180px;">
-        🔍 Search
+        <i data-lucide="search" class="inline-icon"></i> Search
         <input type="text" name="search" value="<%= search %>" placeholder="Search lost items..." />
       </label>
       <label style="min-width:140px;">

@@ -1,7 +1,7 @@
 <%- include('_header') %>
 
 <div style="text-align:center;margin-bottom:1.5rem;">
-  <h2 style="font-size:1.8rem;">📦 Found Items Board</h2>
+  <h2 style="font-size:1.8rem;"><i data-lucide="package-open" class="inline-icon"></i> Found Items Board</h2>
   <p style="color:#888;max-width:550px;margin:0.5rem auto 0;">Found something on campus? Post it here so the owner can claim it. Looking for your lost item? Browse below!</p>
 </div>
 
@@ -39,7 +39,7 @@
   <form method="get" action="/found-items" class="search-filters">
     <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:flex-end;">
       <label style="flex:1;min-width:180px;">
-        🔍 Search
+        <i data-lucide="search" class="inline-icon"></i> Search
         <input type="text" name="search" value="<%= search %>" placeholder="Search found items..." />
       </label>
       <label style="min-width:140px;">
@@ -62,7 +62,7 @@
 <!-- Results -->
 <% if (!posts || posts.length === 0) { %>
   <section class="card center-text" style="padding:3rem;">
-    <div style="font-size:3rem;margin-bottom:0.5rem;">📭</div>
+    <div style="font-size:3rem;margin-bottom:0.5rem;"><i data-lucide="inbox" style="width:3rem;height:3rem;color:#bbb;"></i></div>
     <% if (search || filterCategory) { %>
       <h3>No items match your search</h3>
       <p style="color:#888;">Try different keywords or <a href="/found-items">clear filters</a></p>
@@ -95,12 +95,12 @@
         <div class="lost-card-meta">
           <span>Found by <strong><%= post.finder_name.split(' ')[0] %></strong></span>
           <% if (post.location_found) { %>
-            <span>📍 <%= post.location_found %></span>
+            <span><i data-lucide="map-pin" class="inline-icon"></i> <%= post.location_found %></span>
           <% } %>
           <span><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></span>
         </div>
         <% if (currentUser) { %>
-          <button type="button" class="btn-sm btn-success" style="width:100%;margin-top:0.8rem;" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= post.finder_email %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">🙋 This is mine — Claim it</button>
+          <button type="button" class="btn-sm btn-success" style="width:100%;margin-top:0.8rem;" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= post.finder_email %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">This is mine &mdash; Claim it</button>
         <% } else { %>
           <p style="margin-top:0.8rem;font-size:0.85rem;color:#888;text-align:center;">
             <a href="/login">Login</a> to claim this item
@@ -116,26 +116,26 @@
   <div class="modal-box">
     <button class="modal-close" onclick="closeClaimModal()">&times;</button>
     <div style="text-align:center;margin-bottom:1.2rem;">
-      <div style="font-size:2.5rem;">🎉</div>
+      <div><i data-lucide="party-popper" style="width:2.5rem;height:2.5rem;color:#3a56e4;"></i></div>
       <h2 style="margin-top:0.5rem;" id="modalTitle">Item Claimed!</h2>
     </div>
     <p style="color:#555;text-align:center;margin-bottom:1.5rem;">Contact the finder to arrange pickup:</p>
     <div class="modal-info">
       <div class="modal-info-row">
-        <span class="modal-label">👤 Finder</span>
+        <span class="modal-label"><i data-lucide="user" class="inline-icon"></i> Finder</span>
         <span id="modalFinderName" class="modal-value"></span>
       </div>
       <div class="modal-info-row">
-        <span class="modal-label">📧 Email</span>
+        <span class="modal-label"><i data-lucide="mail" class="inline-icon"></i> Email</span>
         <a id="modalFinderEmail" href="" class="modal-value" style="color:#3a56e4;"></a>
       </div>
       <div class="modal-info-row" id="modalLocationRow" style="display:none;">
-        <span class="modal-label">📍 Found at</span>
+        <span class="modal-label"><i data-lucide="map-pin" class="inline-icon"></i> Found at</span>
         <span id="modalLocation" class="modal-value"></span>
       </div>
     </div>
     <form id="claimForm" method="post" action="" style="margin-top:1.5rem;">
-      <button type="submit" class="btn-success" style="width:100;">✅ Confirm Claim</button>
+      <button type="submit" class="btn-success" style="width:100%;">Confirm Claim</button>
     </form>
     <button type="button" onclick="closeClaimModal()" class="button btn-outline" style="width:100%;margin-top:0.5rem;">Cancel</button>
   </div>
