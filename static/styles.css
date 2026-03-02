@@ -839,7 +839,7 @@ tr:hover td { background: #fafbfd; }
   .site-nav {
     display: none;
     flex-direction: column;
-    gap: 0;
+    gap: 0.25rem;
     width: 100%;
     padding: 0.5rem 0 0.6rem;
     border-top: 1px solid rgba(255,255,255,0.15);
@@ -853,7 +853,7 @@ tr:hover td { background: #fafbfd; }
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 0;
+    gap: 0.25rem;
   }
   .site-nav-group.secondary {
     margin-left: 0;
@@ -872,6 +872,7 @@ tr:hover td { background: #fafbfd; }
     box-sizing: border-box;
   }
   .site-nav a.active::before { display: none; }
+  .site-nav a.active { box-shadow: none; }
   .site-nav a.nav-cta { margin-left: 0; animation: none; box-shadow: none; }
   main { padding: 0 0.8rem; margin: 1rem auto; }
   .hero { padding: 2rem 1.2rem; border-radius: 14px; }
