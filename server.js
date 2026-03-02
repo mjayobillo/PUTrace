@@ -721,8 +721,10 @@ app.post("/found/:token", async (req, res) => {
     return res.redirect(`/login?redirect=${encodeURIComponent(`/found/${req.params.token}`)}`);
   }
   try {
-    const finder_name = sanitize(req.body.finder_name);
-    const finder_email = sanitize(req.body.finder_email);
+    // Always use the logged-in user's real name/email — ignore form values
+    const { data: finder } = await supabase.from("users").select("full_name, email").eq("id", req.session.userId).single();
+    const finder_name = finder?.full_name || sanitize(req.body.finder_name);
+    const finder_email = finder?.email || sanitize(req.body.finder_email);
     const location_hint = sanitize(req.body.location_hint);
     const message = sanitize(req.body.message);
 
@@ -788,17 +790,16 @@ app.get("/found-items", requireAuth, async (req, res) => {
 // Post a found item to the board
 app.post("/found-items", requireAuth, upload.single("image"), async (req, res) => {
   try {
-    const finder_name = sanitize(req.body.finder_name);
-    const finder_email = sanitize(req.body.finder_email);
+    // Always use the logged-in user's real name/email — ignore form values
+    const { data: poster } = await supabase.from("users").select("full_name, email").eq("id", req.session.userId).single();
+    const finder_name = poster?.full_name || sanitize(req.body.finder_name);
+    const finder_email = poster?.email || sanitize(req.body.finder_email);
     const item_name = sanitize(req.body.item_name);
     const item_description = sanitize(req.body.item_description);
     const category = req.body.category || "Other";
     const location_found = sanitize(req.body.location_found);
 
     // Validate
-    if (finder_name.length < 2) return flashRedirect(req, res, "/found-items", "error", "Your name seems too short. Please enter your full name.");
-    if (!isValidEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", "That doesn't look like a valid email address.");
-    if (!isSchoolEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
     if (!item_name || item_name.length > 150) return flashRedirect(req, res, "/found-items", "error", "Item name is required (max 150 chars).");
     if (!location_found) return flashRedirect(req, res, "/found-items", "error", "Please specify where you found the item.");
 
