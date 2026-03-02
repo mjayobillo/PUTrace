@@ -29,7 +29,17 @@
               <p class="sub">Campus Item Recovery System</p>
             </div>
           </div>
-          <button class="nav-hamburger" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="site-nav">&#9776;</button>
+          <div class="header-top-right">
+            <% if (currentUser) { %>
+              <a href="/messages" class="nav-messages-icon<%= isActive('/messages') ? ' active' : '' %>" aria-label="Messages">
+                <i data-lucide="message-circle" style="width:1.25rem;height:1.25rem;"></i>
+                <% if (unreadCount > 0) { %>
+                  <span class="nav-badge"><%= unreadCount %></span>
+                <% } %>
+              </a>
+            <% } %>
+            <button class="nav-hamburger" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="site-nav">&#9776;</button>
+          </div>
         </div>
         <nav class="site-nav" id="site-nav" aria-label="Primary">
           <a href="/" class="<%= path === '/' ? 'active' : '' %>">Home</a>
@@ -37,8 +47,12 @@
             <div class="site-nav-group">
               <a href="/dashboard" class="<%= isActive('/dashboard') ? 'active' : '' %>">Dashboard</a>
               <a href="/items/new" class="<%= isActive('/items/new') ? 'active' : '' %>">Register Item</a>
+            </div>
+            <div class="site-nav-group nav-boards-group">
               <a href="/lost" class="<%= isActive('/lost') ? 'active' : '' %>">Lost Board</a>
               <a href="/found-items" class="<%= isActive('/found-items') ? 'active' : '' %>">Found Board</a>
+            </div>
+            <div class="site-nav-group nav-messages-group">
               <a href="/messages" class="<%= isActive('/messages') ? 'active' : '' %>">
                 Messages
                 <% if (unreadCount > 0) { %>

@@ -110,6 +110,33 @@ select:focus-visible,
 }
 .nav-hamburger:hover { background: rgba(255,255,255,0.2); transform: none; box-shadow: none; }
 .nav-hamburger::after { display: none; }
+.header-top-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-messages-icon {
+  display: none; /* mobile only */
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.9);
+  border-radius: 8px;
+  padding: 0.38rem 0.6rem;
+  text-decoration: none;
+  line-height: 1;
+  transition: background 0.18s;
+}
+.nav-messages-icon:hover { background: rgba(255,255,255,0.2); }
+.nav-messages-icon.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.4); }
+.nav-messages-icon .nav-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  margin: 0;
+  min-width: 17px;
+  height: 17px;
+  font-size: 0.65rem;
+  padding: 0 4px;
+}
 .site-header .brand { display: flex; align-items: center; gap: 0.6rem; }
 .site-header .logo-img { height: 52px; width: auto; max-width: 160px; border-radius: 0; object-fit: contain; margin-right: 0.5rem; }
 .site-header h1 { margin: 0; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
@@ -119,6 +146,14 @@ select:focus-visible,
   display: flex;
   align-items: center;
   gap: 0.2rem;
+}
+.nav-boards-group {
+  border-left: 1px solid rgba(255,255,255,0.18);
+  border-right: 1px solid rgba(255,255,255,0.18);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin-left: 0.15rem;
+  margin-right: 0.15rem;
 }
 .site-nav-group.secondary {
   margin-left: 0.6rem;
@@ -970,6 +1005,8 @@ tr:hover td { background: #fafbfd; }
     width: 100%;
   }
   .nav-hamburger { display: flex; padding: 0.55rem 0.9rem; font-size: 1.45rem; }
+  .nav-messages-icon { display: flex; }
+  .nav-messages-group { display: none; }
   .site-header .brand { justify-content: flex-start; }
   .site-header h1 { font-size: 1.1rem; }
   .sub { display: none; }
@@ -991,6 +1028,20 @@ tr:hover td { background: #fafbfd; }
     flex-direction: column;
     width: 100%;
     gap: 0.4rem;
+  }
+  .nav-boards-group {
+    border-left: none;
+    border-right: none;
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: 0;
+    margin-right: 0;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+    margin-top: 0.2rem;
+    margin-bottom: 0.2rem;
   }
   .site-nav-group.secondary {
     margin-left: 0;
