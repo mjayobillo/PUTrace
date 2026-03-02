@@ -910,7 +910,7 @@ app.post("/found-messages/:postId", requireAuth, async (req, res) => {
     if (text.length > 1000) return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Message too long (max 1000 chars).");
 
     await supabase.from("found_post_messages").insert({ found_post_id: postId, sender_user_id: userId, message: text });
-    return flashRedirect(req, res, `/found-messages/${postId}`, "success", "Message sent.");
+    return res.redirect(`/found-messages/${postId}`);
   } catch (err) {
     console.error("Found messages send error:", err);
     return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
@@ -1104,7 +1104,7 @@ app.post("/messages/:reportId", requireAuth, async (req, res) => {
     });
     if (error) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Failed to send message.");
 
-    return flashRedirect(req, res, `/messages/${ctx.report.id}`, "success", "Message sent.");
+    return res.redirect(`/messages/${ctx.report.id}`);
   } catch (err) {
     console.error("Send message error:", err);
     return flashRedirect(req, res, `/messages/${req.params.reportId}`, "error", "Something went wrong.");
