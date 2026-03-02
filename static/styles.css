@@ -911,7 +911,7 @@ tr:hover td { background: #fafbfd; }
   margin-bottom: 0.5rem;
   text-align: center;
 }
-.success-actions { margin-top: 1rem; }
+.success-actions { margin-top: 1rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
 .modal-info {
   background: #f8f9fc;
   border-radius: 12px;

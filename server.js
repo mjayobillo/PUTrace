@@ -295,7 +295,7 @@ async function getAccessibleReportContext(req, res, reportId) {
 // Block access if not logged in
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
-    setFlash(req, "error", "Please login to continue.");
+    setFlash(req, "error", "Please log in to continue.");
     const redirect = encodeURIComponent(req.originalUrl);
     return res.redirect(`/login?redirect=${redirect}`);
   }
@@ -342,7 +342,7 @@ app.post("/signup", async (req, res) => {
     // Check if email already exists
     const { data: exists } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
     if (exists) {
-      setFlash(req, "error", "Email already registered.");
+      setFlash(req, "error", "That email is already registered. Try logging in instead.");
       return res.redirect("/signup");
     }
 
@@ -351,11 +351,11 @@ app.post("/signup", async (req, res) => {
     const { error } = await supabase.from("users").insert({ full_name, email, password_hash });
 
     if (error) {
-      setFlash(req, "error", "Signup failed. Please try again.");
+      setFlash(req, "error", "Signup didn't go through. Please try again.");
       return res.redirect("/signup");
     }
 
-    setFlash(req, "success", "Account created! Please log in.");
+    setFlash(req, "success", "Account created! Welcome to PUTrace — please log in.");
     return res.redirect("/login");
   } catch (err) {
     console.error("Signup error:", err);
@@ -541,7 +541,7 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Dashboard error:", err);
-    setFlash(req, "error", "Failed to load dashboard.");
+    setFlash(req, "error", "Couldn't load your dashboard. Please try again.");
     return res.redirect("/");
   }
 });
@@ -591,7 +591,7 @@ async function handleRegisterItem(req, res) {
       return flashRedirect(req, res, "/items/new", "error", "Failed to register item.");
     }
 
-    return flashRedirect(req, res, "/dashboard", "success", "Item registered and QR generated.");
+    return flashRedirect(req, res, "/dashboard", "success", "Item registered! Your QR code is ready.");
   } catch (err) {
     console.error("Register item error:", err);
     return flashRedirect(req, res, "/items/new", "error", "Something went wrong.");
@@ -636,7 +636,7 @@ app.get("/lost", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Lost board error:", err);
-    setFlash(req, "error", "Failed to load lost board.");
+    setFlash(req, "error", "Couldn't load the Lost Board. Please try again.");
     return res.redirect("/");
   }
 });
@@ -652,7 +652,7 @@ app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
     // Find the lost item
     const { data: item } = await supabase.from("items").select("id, item_name").eq("id", req.params.id).eq("item_status", "lost").maybeSingle();
     if (!item) {
-      setFlash(req, "error", "Item not found.");
+      setFlash(req, "error", "We couldn't find that item.");
       return res.redirect("/lost");
     }
 
@@ -729,7 +729,7 @@ app.post("/found/:token", requireAuth, async (req, res) => {
     if (error) {
       return flashRedirect(req, res, `/found/${req.params.token}`, "error", "Failed to submit report.");
     }
-    return flashRedirect(req, res, `/found/${req.params.token}`, "success", "Report submitted to owner!");
+    return flashRedirect(req, res, `/found/${req.params.token}`, "success", "Report sent! The owner has been notified.");
   } catch (err) {
     console.error("QR report error:", err);
     return flashRedirect(req, res, `/found/${req.params.token}`, "error", "Something went wrong.");
@@ -755,7 +755,7 @@ app.get("/found-items", requireAuth, async (req, res) => {
     res.render("found_items", { posts: filtered, categories: CATEGORIES, search, filterCategory });
   } catch (err) {
     console.error("Found board error:", err);
-    setFlash(req, "error", "Failed to load found items.");
+    setFlash(req, "error", "Couldn't load the Found Board. Please try again.");
     return res.redirect("/");
   }
 });
@@ -771,8 +771,8 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
     const location_found = sanitize(req.body.location_found);
 
     // Validate
-    if (finder_name.length < 2) return flashRedirect(req, res, "/found-items", "error", "Name is too short.");
-    if (!isValidEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", "Invalid email.");
+    if (finder_name.length < 2) return flashRedirect(req, res, "/found-items", "error", "Your name seems too short. Please enter your full name.");
+    if (!isValidEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", "That doesn't look like a valid email address.");
     if (!isSchoolEmail(finder_email)) return flashRedirect(req, res, "/found-items", "error", `Use a school email (@${ALLOWED_EMAIL_DOMAIN}).`);
     if (!item_name || item_name.length > 150) return flashRedirect(req, res, "/found-items", "error", "Item name is required (max 150 chars).");
 
@@ -791,9 +791,9 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
     });
 
     if (error) {
-      return flashRedirect(req, res, "/found-items", "error", "Failed to post item.");
+      return flashRedirect(req, res, "/found-items", "error", "Couldn't post your item. Please try again.");
     }
-    return flashRedirect(req, res, "/found-items", "success", "Found item posted! The owner can now find it here.");
+    return flashRedirect(req, res, "/found-items", "success", "Posted! The owner can now see it on the Found Board.");
   } catch (err) {
     console.error("Post found item error:", err);
     return flashRedirect(req, res, "/found-items", "error", "Something went wrong.");
@@ -811,7 +811,7 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
       .maybeSingle();
 
     if (!post) {
-      setFlash(req, "error", "Post not found or already claimed.");
+      setFlash(req, "error", "That post is no longer available.");
       return res.redirect("/found-items");
     }
 
@@ -889,7 +889,7 @@ app.post("/found-messages/:postId/unclaim", requireAuth, async (req, res) => {
     if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
     if (post.status !== "claimed") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Post is not currently claimed.");
     await supabase.from("found_posts").update({ status: "unclaimed", claimer_user_id: null }).eq("id", postId);
-    return flashRedirect(req, res, "/found-items", "success", "Claim rejected. The post is now open again.");
+    return flashRedirect(req, res, "/found-items", "success", "Claim rejected. The post is open for others to claim.");
   } catch (err) {
     console.error("Unclaim error:", err);
     return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
