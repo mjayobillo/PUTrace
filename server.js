@@ -1240,7 +1240,12 @@ app.post("/item/:id/status", requireAuth, async (req, res) => {
   if (!ITEM_STATUS_VALUES.includes(item_status)) { setFlash(req, "error", "Invalid status."); return res.redirect("/dashboard"); }
 
   await supabase.from("items").update({ item_status }).eq("id", item.id);
-  setFlash(req, "success", `Item marked as ${item_status}.`);
+  const statusMessages = {
+    lost: `"${item.item_name}" is now listed on the Lost Board. Others can spot it and let you know!`,
+    recovered: `Great news! "${item.item_name}" is marked as recovered.`,
+    active: `"${item.item_name}" is back to active.`
+  };
+  setFlash(req, "success", statusMessages[item_status] || `Status updated.`);
   return res.redirect("/dashboard");
 });
 
