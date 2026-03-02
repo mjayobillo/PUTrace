@@ -92,16 +92,11 @@
       <p>No reports yet. When someone scans your QR code, their report will appear here.</p>
     </div>
   <% } else { %>
-    <table>
-      <thead>
-        <tr><th>Item</th><th>Finder</th><th>Message</th><th>Status</th><th class="action-col-min">Action</th></tr>
-      </thead>
-      <tbody>
+    <div class="report-card-list">
       <% reports.forEach((r) => { %>
         <%- include('_dashboard_report_row', { r }) %>
       <% }) %>
-      </tbody>
-    </table>
+    </div>
   <% } %>
 </section>
 <%- include('_footer') %>
