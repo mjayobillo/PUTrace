@@ -175,15 +175,16 @@ app.use(async (req, res, next) => {
       .single();
     res.locals.currentUser = data || null;
 
-    // Count open finder reports for the Messages nav badge
+    // Count unread messages using session-based last-read tracking
     const { data: userItems } = await supabase
       .from("items")
       .select("id")
       .eq("user_id", req.session.userId);
     const ownedIds = (userItems || []).map((i) => i.id);
+    const readReports = req.session.lastReadReports || {};
+    const readFoundPosts = req.session.lastReadFoundPosts || {};
     let unread = 0;
     if (ownedIds.length > 0) {
-      // Get IDs of open reports on owned items
       const { data: openReports } = await supabase
         .from("finder_reports")
         .select("id")
@@ -191,29 +192,33 @@ app.use(async (req, res, next) => {
         .eq("status", "open");
       const openReportIds = (openReports || []).map((r) => r.id);
       if (openReportIds.length > 0) {
-        // Count messages in those threads sent by finders (not by the owner)
-        const { count } = await supabase
+        const { data: reportMsgs } = await supabase
           .from("report_messages")
-          .select("id", { count: "exact", head: true })
+          .select("id, report_id, created_at")
           .in("report_id", openReportIds)
           .neq("sender_user_id", req.session.userId);
-        unread = count || 0;
+        unread = (reportMsgs || []).filter((m) => {
+          const lr = readReports[String(m.report_id)];
+          return !lr || new Date(m.created_at) > new Date(lr);
+        }).length;
       }
     }
-    // Also count unread found_post_messages where user is involved but didn't send
     const { data: involvedPosts } = await supabase
       .from("found_posts")
       .select("id")
-      .eq("status", "claimed")
+      .in("status", ["claimed", "returned"])
       .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
     const involvedPostIds = (involvedPosts || []).map((p) => p.id);
     if (involvedPostIds.length > 0) {
-      const { count: foundUnread } = await supabase
+      const { data: foundMsgs } = await supabase
         .from("found_post_messages")
-        .select("id", { count: "exact", head: true })
+        .select("id, found_post_id, created_at")
         .in("found_post_id", involvedPostIds)
         .neq("sender_user_id", req.session.userId);
-      unread += foundUnread || 0;
+      unread += (foundMsgs || []).filter((m) => {
+        const lr = readFoundPosts[String(m.found_post_id)];
+        return !lr || new Date(m.created_at) > new Date(lr);
+      }).length;
     }
     res.locals.unreadMessagesCount = unread;
   }
@@ -651,10 +656,13 @@ app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
     const message = sanitize(req.body.message);
 
     // Find the lost item
-    const { data: item } = await supabase.from("items").select("id, item_name").eq("id", req.params.id).eq("item_status", "lost").maybeSingle();
+    const { data: item } = await supabase.from("items").select("id, item_name, user_id").eq("id", req.params.id).eq("item_status", "lost").maybeSingle();
     if (!item) {
       setFlash(req, "error", "We couldn't find that item.");
       return res.redirect("/lost");
+    }
+    if (item.user_id === req.session.userId) {
+      return flashRedirect(req, res, "/lost", "error", "You can't report a sighting on your own item.");
     }
 
     // Validate inputs
@@ -694,7 +702,10 @@ app.get("/found/:token", async (req, res) => {
     }
     const { data: item } = await supabase.from("items").select("*").eq("token", req.params.token).maybeSingle();
     if (!item) return res.status(404).render("not_found");
-
+    if (item.user_id === req.session.userId) {
+      setFlash(req, "error", "That's your own item — you can't report it as found.");
+      return res.redirect("/dashboard");
+    }
     const { data: owner } = await supabase.from("users").select("full_name, email").eq("id", item.user_id).single();
     return res.render("found_qr", { item, owner });
   } catch (err) {
@@ -715,8 +726,12 @@ app.post("/found/:token", async (req, res) => {
     const location_hint = sanitize(req.body.location_hint);
     const message = sanitize(req.body.message);
 
-    const { data: item } = await supabase.from("items").select("id, item_name").eq("token", req.params.token).maybeSingle();
+    const { data: item } = await supabase.from("items").select("id, item_name, user_id").eq("token", req.params.token).maybeSingle();
     if (!item) return res.status(404).render("not_found");
+    if (item.user_id === req.session.userId) {
+      setFlash(req, "error", "That's your own item — you can't report it as found.");
+      return res.redirect("/dashboard");
+    }
 
     // Basic validation
     const validationError = getReportValidationError(finder_name, finder_email, message);
@@ -878,6 +893,7 @@ app.get("/found-messages/:postId", requireAuth, async (req, res) => {
       counterpartName = isClaimer ? post.finder_name : "Claimer";
     }
 
+    req.session.lastReadFoundPosts = { ...(req.session.lastReadFoundPosts || {}), [String(postId)]: new Date().toISOString() };
     res.render("found_thread", {
       post,
       messages: messages.map((m) => ({ ...m, is_me: m.sender_user_id === userId, sender_name: senderMap[m.sender_user_id] || "User" })),
@@ -901,6 +917,21 @@ app.post("/found-messages/:postId/unclaim", requireAuth, async (req, res) => {
     return flashRedirect(req, res, "/found-items", "success", "Claim rejected. The post is open for others to claim.");
   } catch (err) {
     console.error("Unclaim error:", err);
+    return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
+  }
+});
+
+app.post("/found-messages/:postId/resolve", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.postId);
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status").eq("id", postId).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+    if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
+    if (post.status !== "claimed") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Post must be claimed before marking it returned.");
+    await supabase.from("found_posts").update({ status: "returned" }).eq("id", postId);
+    return flashRedirect(req, res, "/messages", "success", "Great! Marked as returned — glad the item made it back!");
+  } catch (err) {
+    console.error("Resolve found post error:", err);
     return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
   }
 });
@@ -1003,6 +1034,7 @@ app.get("/messages", requireAuth, async (req, res) => {
           item_name: item.item_name,
           preview: latestMsgMap[r.id]?.message || r.message,
           status: r.status,
+          kind: 'report',
           role,
           counterpart_name: counterpartName,
           created_at: latestMsgMap[r.id]?.created_at || r.created_at
@@ -1014,7 +1046,7 @@ app.get("/messages", requireAuth, async (req, res) => {
     const { data: foundPosts } = await supabase
       .from("found_posts")
       .select("id, item_name, status, finder_user_id, claimer_user_id, created_at")
-      .eq("status", "claimed")
+      .in("status", ["claimed", "returned"])
       .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
 
     const foundConvos = await Promise.all((foundPosts || []).map(async (fp) => {
@@ -1039,7 +1071,8 @@ app.get("/messages", requireAuth, async (req, res) => {
         url: `/found-messages/${fp.id}`,
         item_name: fp.item_name,
         preview: lastMsg?.message || "Claim initiated",
-        status: "claimed",
+        status: fp.status,
+        kind: 'found',
         role: isClaimer ? "claimer" : "finder",
         counterpart_name: counterpartName,
         created_at: lastMsg?.created_at || fp.created_at
@@ -1080,6 +1113,7 @@ app.get("/messages/:reportId", requireAuth, async (req, res) => {
 
     const counterpartName = isOwner ? (report.finder_name || report.finder_email || "Finder") : owner.full_name;
 
+    req.session.lastReadReports = { ...(req.session.lastReadReports || {}), [String(report.id)]: new Date().toISOString() };
     res.render("message_thread", {
       report,
       item,

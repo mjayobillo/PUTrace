@@ -8,9 +8,14 @@
   <p class="muted">Chat with: <strong><%= counterpartName %></strong></p>
   <p class="muted" style="font-size:0.85rem;">Confirm ownership and arrange pickup below.</p>
   <% if (isFinder && post.status === 'claimed' && post.claimer_user_id !== post.finder_user_id) { %>
-    <form method="post" action="/found-messages/<%= post.id %>/unclaim" onsubmit="return confirm('Reject this claim? The post will become claimable again.')">
-      <button type="submit" class="button btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">Reject Claim</button>
-    </form>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
+      <form method="post" action="/found-messages/<%= post.id %>/resolve">
+        <button type="submit" class="button btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;">&#10003; Mark as Returned</button>
+      </form>
+      <form method="post" action="/found-messages/<%= post.id %>/unclaim" onsubmit="return confirm('Reject this claim? The post will become claimable again.')">
+        <button type="submit" class="button btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">Reject Claim</button>
+      </form>
+    </div>
   <% } %>
 </section>
 

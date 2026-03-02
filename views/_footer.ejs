@@ -125,6 +125,22 @@
         });
       })();
 
+      // Textarea character counter
+      (function () {
+        document.querySelectorAll('textarea[maxlength]').forEach(function (ta) {
+          var max = parseInt(ta.getAttribute('maxlength'));
+          var counter = document.createElement('small');
+          counter.style.cssText = 'display:block;text-align:right;color:#aaa;font-size:0.76rem;margin-top:3px;';
+          counter.textContent = max + ' characters remaining';
+          ta.parentNode.insertBefore(counter, ta.nextSibling);
+          ta.addEventListener('input', function () {
+            var rem = max - ta.value.length;
+            counter.textContent = rem + ' characters remaining';
+            counter.style.color = rem < 50 ? '#e74c3c' : '#aaa';
+          });
+        });
+      })();
+
       // Init Lucide icons
       if (typeof lucide !== 'undefined') lucide.createIcons();
     </script>

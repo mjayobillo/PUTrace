@@ -70,13 +70,17 @@
         <div class="lost-card-form-panel">
           <h4>&#128065; Report a Sighting</h4>
           <p class="lost-sighting-hint">Seen this item? Fill in the form and let the owner know.</p>
+          <% if (currentUser && currentUser.id === item.user_id) { %>
+            <p class="muted" style="padding:1rem 0;font-size:0.88rem;">This is your item — you can't report a sighting on it.</p>
+          <% } else { %>
           <form class="sighting-form-el" method="post" action="/lost/<%= item.id %>/sighting" style="min-width:0;width:100%">
-            <label>Your name <input name="reporter_name" required placeholder="Your full name" value="<%= currentUser ? currentUser.full_name : '' %>" /></label>
-            <label>Your email <input type="email" name="reporter_email" required placeholder="you@panpacificu.edu.ph" value="<%= currentUser ? currentUser.email : '' %>" /></label>
+            <label>Your name <input name="reporter_name" required placeholder="Your full name" value="<%= currentUser ? currentUser.full_name : '' %>" <%= currentUser ? 'readonly' : '' %> /></label>
+            <label>Your email <input type="email" name="reporter_email" required placeholder="you@panpacificu.edu.ph" value="<%= currentUser ? currentUser.email : '' %>" <%= currentUser ? 'readonly' : '' %> /></label>
             <label>Where did you see it? <input name="location" placeholder="e.g. Library, Room 201" /></label>
-            <label>Details <textarea name="message" rows="3" required placeholder="Describe what you saw..."></textarea></label>
+            <label>Details <textarea name="message" rows="3" maxlength="1000" required placeholder="Describe what you saw..."></textarea></label>
             <button type="submit" class="btn-sm btn-success" style="width:100%">&#10003; Send Sighting Report</button>
           </form>
+          <% } %>
         </div>
       </article>
     <% }) %>

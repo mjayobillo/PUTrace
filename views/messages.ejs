@@ -14,9 +14,12 @@
         <a href="<%= c.url %>" class="conversation-card">
           <div class="conversation-head">
             <strong><%= c.item_name %></strong>
-            <span class="badge <%= c.status === 'open' ? 'badge-open' : c.status === 'claimed' ? 'badge-active' : 'badge-resolved' %>">
-              <%= c.status === 'open' ? 'Open' : c.status === 'claimed' ? 'Claimed' : 'Resolved' %>
-            </span>
+            <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+              <span class="badge <%= c.kind === 'found' ? 'badge-active' : 'badge-open' %>" style="font-size:0.68rem;opacity:0.85;"><%= c.kind === 'found' ? 'Found Board' : 'Lost Report' %></span>
+              <span class="badge <%= c.status === 'open' ? 'badge-open' : c.status === 'claimed' ? 'badge-active' : 'badge-resolved' %>">
+                <%= c.status === 'open' ? 'Open' : c.status === 'claimed' ? 'Claimed' : c.status === 'returned' ? 'Returned' : 'Resolved' %>
+              </span>
+            </div>
           </div>
           <p class="muted">With: <%= c.counterpart_name %></p>
           <p class="conversation-preview"><%= (c.preview || '').replace(/^\[Sighting\]\s*/, '') %></p>
