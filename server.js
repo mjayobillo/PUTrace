@@ -63,6 +63,38 @@ function buildResetLink(token) {
   return `${BASE_URL}/reset-password/${token}`;
 }
 
+// Branded HTML wrapper for all emails
+function emailTemplate(bodyHtml) {
+  return `
+  <!DOCTYPE html>
+  <html>
+  <body style="margin:0;padding:0;background:#f0f2f5;font-family:'Segoe UI',system-ui,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+      <tr><td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a1a2e 0%,#3a56e4 100%);padding:28px 32px;text-align:center;">
+              <img src="${BASE_URL}/putrace_icon_fixed.png" alt="PUTrace" width="48" height="48" style="display:inline-block;vertical-align:middle;border-radius:8px;margin-right:12px;" />
+              <span style="color:#fff;font-size:1.5rem;font-weight:700;vertical-align:middle;letter-spacing:-0.5px;">PUTrace</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;color:#1a1a2e;font-size:0.95rem;line-height:1.7;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;background:#f8f9fc;border-top:1px solid #eef0f6;text-align:center;color:#888;font-size:0.8rem;">
+              PUTrace &mdash; Campus Lost &amp; Found &bull; Pan Pacific University
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+  </html>`;
+}
+
 // Generic email sender (uses SendGrid when configured, otherwise logs to console)
 async function sendEmail(to, subject, htmlBody) {
   const apiKey = process.env.SENDGRID_API_KEY || "";
@@ -78,7 +110,7 @@ async function sendEmail(to, subject, htmlBody) {
       personalizations: [{ to: [{ email: to }] }],
       from: { email: from, name: "PUTrace" },
       subject,
-      content: [{ type: "text/html", value: htmlBody }]
+      content: [{ type: "text/html", value: emailTemplate(htmlBody) }]
     })
   });
   if (!resp.ok) console.error("SendGrid error:", await resp.text());
@@ -94,10 +126,12 @@ async function sendPasswordResetEmail(email, resetLink) {
     return false;
   }
   return sendEmail(email, "PUTrace Password Reset",
-    `<p>You requested a password reset for PUTrace.</p>
-     <p><a href="${resetLink}">Reset your password</a></p>
-     <p>This link expires in 30 minutes.</p>
-     <p>If you did not request this, you can ignore this email.</p>`);
+    `<h2 style="margin:0 0 16px;font-size:1.2rem;">Password Reset Request</h2>
+     <p>You requested a password reset for your PUTrace account.</p>
+     <p style="margin:20px 0;">
+       <a href="${resetLink}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">Reset My Password</a>
+     </p>
+     <p style="color:#888;font-size:0.87rem;">This link expires in 30 minutes. If you did not request this, you can safely ignore this email.</p>`);
 }
 
 async function getValidResetTokenRecord(rawToken) {
@@ -685,13 +719,19 @@ app.post("/lost/:id/sighting", requireAuth, async (req, res) => {
     try {
       const { data: owner } = await supabase.from("users").select("email, full_name").eq("id", item.user_id).single();
       if (owner?.email) {
-        await sendEmail(owner.email, `Someone spotted your item on PUTrace — ${item.item_name}`, `
-          <p>Hi ${owner.full_name || 'there'},</p>
-          <p><strong>${reporter_name}</strong> (${reporter_email}) reported a sighting of your lost item <strong>${item.item_name}</strong>.</p>
-          ${location ? `<p><strong>Where:</strong> ${location}</p>` : ''}
-          <p><strong>Details:</strong> ${message}</p>
-          <p><a href="${BASE_URL}/messages">View the report on PUTrace</a></p>
-        `);
+        await sendEmail(owner.email, `Someone spotted your item — ${item.item_name}`,
+          `<h2 style="margin:0 0 16px;font-size:1.2rem;">&#128065; Sighting Report</h2>
+           <p>Hi <strong>${owner.full_name || 'there'}</strong>,</p>
+           <p>Someone spotted your lost item <strong>${item.item_name}</strong> on campus.</p>
+           <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+             <tr><td style="padding:8px 12px;background:#f8f9fc;border-radius:6px 6px 0 0;color:#666;font-size:0.85rem;width:110px;">Reported by</td><td style="padding:8px 12px;background:#f8f9fc;border-radius:0 6px 0 0;">${reporter_name} &lt;${reporter_email}&gt;</td></tr>
+             ${location ? `<tr><td style="padding:8px 12px;border-top:1px solid #eee;color:#666;font-size:0.85rem;">Where</td><td style="padding:8px 12px;border-top:1px solid #eee;">${location}</td></tr>` : ''}
+             <tr><td style="padding:8px 12px;border-top:1px solid #eee;border-radius:0 0 0 6px;color:#666;font-size:0.85rem;">Details</td><td style="padding:8px 12px;border-top:1px solid #eee;border-radius:0 0 6px 0;">${message}</td></tr>
+           </table>
+           <p style="margin-top:20px;">
+             <a href="${BASE_URL}/messages" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">View in Messages</a>
+           </p>`
+        );
       }
     } catch (emailErr) {
       console.error("Sighting notification email failed:", emailErr);
