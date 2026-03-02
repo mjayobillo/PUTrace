@@ -34,12 +34,16 @@
     <% } %>
   </div>
 
+  <% if (post.status === 'returned') { %>
+    <p class="muted" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This item has been returned. The conversation is now closed.</p>
+  <% } else { %>
   <form method="post" action="/found-messages/<%= post.id %>">
     <label>Message
       <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
     </label>
-    <button type="submit">Send Message</button>
+    <button type="submit" class="button btn-success">Send Message</button>
   </form>
+  <% } %>
 </section>
 
 <script>

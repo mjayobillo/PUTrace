@@ -773,6 +773,7 @@ app.get("/found-items", requireAuth, async (req, res) => {
     let query = supabase
       .from("found_posts")
       .select("*")
+      .in("status", ["unclaimed", "claimed"])
       .order("created_at", { ascending: false });
     if (filterCategory) query = query.eq("category", filterCategory);
 
@@ -1301,8 +1302,19 @@ app.post("/item/:id/status", requireAuth, async (req, res) => {
 // ── Delete Item ──
 
 app.post("/item/:id/delete", requireAuth, async (req, res) => {
-  const item = await getOwnedItem(req, req.params.id, "id, user_id, image_url");
+  const item = await getOwnedItem(req, req.params.id, "id, user_id, item_name, image_url");
   if (!item) { setFlash(req, "error", "Item not found."); return res.redirect("/dashboard"); }
+
+  // Block deletion if there are open report threads
+  const { data: openReports } = await supabase
+    .from("finder_reports")
+    .select("id")
+    .eq("item_id", item.id)
+    .eq("status", REPORT_STATUS.OPEN);
+  if (openReports && openReports.length > 0) {
+    setFlash(req, "error", `Cannot delete "${item.item_name}" — it has ${openReports.length} open report${openReports.length > 1 ? 's' : ''}. Resolve them first.`);
+    return res.redirect("/dashboard");
+  }
 
   // Remove item image from storage if one was uploaded
   if (item.image_url) {
