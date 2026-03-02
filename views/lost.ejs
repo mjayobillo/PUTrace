@@ -43,7 +43,7 @@
 <% } else { %>
   <p style="color:#888;margin-bottom:1rem;font-size:0.9rem;"><%= items.length %> item<%= items.length > 1 ? 's' : '' %> reported lost</p>
 
-  <div class="lost-grid">
+  <div class="lost-board-grid">
     <% items.forEach((item) => { %>
       <article class="lost-card lost-card-split">
         <div class="lost-card-info">
@@ -70,7 +70,7 @@
         <div class="lost-card-form-panel">
           <h4>&#128065; Report a Sighting</h4>
           <p class="lost-sighting-hint">Seen this item? Fill in the form and let the owner know.</p>
-          <form class="sighting-form-el" method="post" action="/lost/<%= item.id %>/sighting">
+          <form class="sighting-form-el" method="post" action="/lost/<%= item.id %>/sighting" style="min-width:0;width:100%">
             <label>Your name <input name="reporter_name" required placeholder="Your full name" value="<%= currentUser ? currentUser.full_name : '' %>" /></label>
             <label>Your email <input type="email" name="reporter_email" required placeholder="you@panpacificu.edu.ph" value="<%= currentUser ? currentUser.email : '' %>" /></label>
             <label>Where did you see it? <input name="location" placeholder="e.g. Library, Room 201" /></label>
@@ -83,7 +83,6 @@
   </div>
 <% } %>
 
-<!-- Sighting Confirmation Modal -->
 <div id="sighting-confirm-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="sighting-modal-title">
   <div class="modal-box">
     <button type="button" class="modal-close" id="sighting-modal-close" aria-label="Close">&times;</button>

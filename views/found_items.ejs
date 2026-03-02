@@ -95,9 +95,9 @@
         <div class="lost-card-meta">
           <span>Found by <strong><%= post.finder_name.split(' ')[0] %></strong></span>
           <% if (post.location_found) { %>
-            <span><i data-lucide="map-pin" class="inline-icon"></i> <%= post.location_found %></span>
+            <span>&#183; <%= post.location_found %></span>
           <% } %>
-          <span><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></span>
+          <span>&#183; <%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>, <%= new Date(post.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %></span>
         </div>
         <% if (currentUser) { %>
           <button type="button" class="btn-sm btn-success" style="width:100%;margin-top:0.8rem;" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= post.finder_email %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">This is mine &mdash; Claim it</button>

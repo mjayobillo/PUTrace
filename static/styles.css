@@ -808,6 +808,7 @@ tr:hover td { background: #fafbfd; }
 .not-found-icon { display: flex; justify-content: center; margin-bottom: 1rem; animation: pulse 2s ease-in-out infinite; }
 
 /* ===== Lost Board ===== */
+.lost-board-grid { display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
 .lost-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
 .lost-card {
   background: #fff;
@@ -828,12 +829,13 @@ tr:hover td { background: #fafbfd; }
 .lost-card-desc { font-size: 0.9rem; color: #666; margin-bottom: 1rem; line-height: 1.5; }
 .lost-card-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; justify-content: flex-start; font-size: 0.8rem; color: #999; margin-bottom: 0; padding-top: 0.8rem; border-top: 1px solid #f0f2f5; }
 .lost-card-split { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: stretch; }
-.lost-card-info { padding-right: 1.2rem; }
+.lost-card-info { padding-right: 1.2rem; min-width: 0; }
 .lost-card-form-panel {
   border-left: 2px solid #eef2ff;
   padding-left: 1.2rem;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .lost-card-form-panel h4 { font-size: 0.92rem; font-weight: 700; color: #3a56e4; margin-bottom: 0.3rem; }
 .lost-sighting-hint { font-size: 0.8rem; color: #888; margin-bottom: 0.8rem; }
