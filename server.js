@@ -711,7 +711,6 @@ app.get("/found-items", requireAuth, async (req, res) => {
     let query = supabase
       .from("found_posts")
       .select("*")
-      .eq("status", "unclaimed")
       .order("created_at", { ascending: false });
     if (filterCategory) query = query.eq("category", filterCategory);
 
@@ -752,7 +751,8 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
       category: normalizeCategory(category),
       location_found: location_found || null,
       image_url,
-      status: "unclaimed"
+      status: "unclaimed",
+      finder_user_id: req.session.userId
     });
 
     if (error) {
@@ -780,13 +780,89 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
       return res.redirect("/found-items");
     }
 
-    await supabase.from("found_posts").update({ status: "claimed" }).eq("id", post.id);
-    setFlash(req, "success", `You claimed "${post.item_name}". Contact the finder at ${post.finder_email} to arrange pickup.`);
-    return res.redirect("/found-items");
+    const claimerId = req.session.userId;
+    await supabase.from("found_posts").update({ status: "claimed", claimer_user_id: claimerId }).eq("id", post.id);
+
+    // Auto-create an opening message to kick off the thread
+    await supabase.from("found_post_messages").insert({
+      found_post_id: post.id,
+      sender_user_id: claimerId,
+      message: `Hi! I believe "${post.item_name}" is mine. I'd like to arrange a pickup to confirm ownership.`
+    });
+
+    setFlash(req, "success", `You claimed "${post.item_name}"! Chat with the finder below to confirm ownership and arrange pickup.`);
+    return res.redirect(`/found-messages/${post.id}`);
   } catch (err) {
     console.error("Claim error:", err);
     setFlash(req, "error", "Something went wrong.");
     return res.redirect("/found-items");
+  }
+});
+
+// ── Found Item Chat Thread ──
+
+app.get("/found-messages/:postId", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.postId);
+    const { data: post } = await supabase.from("found_posts").select("*").eq("id", postId).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+
+    const userId = req.session.userId;
+    if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).send("Forbidden");
+
+    const { data: rows } = await supabase
+      .from("found_post_messages")
+      .select("id, found_post_id, sender_user_id, message, created_at")
+      .eq("found_post_id", postId)
+      .order("created_at", { ascending: true });
+    const messages = rows || [];
+
+    const senderIds = [...new Set(messages.map((m) => m.sender_user_id).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", senderIds);
+      senderMap = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
+    }
+
+    const isClaimer = post.claimer_user_id === userId;
+    let counterpartName = "Unknown";
+    const otherUserId = isClaimer ? post.finder_user_id : post.claimer_user_id;
+    if (otherUserId) {
+      const { data: other } = await supabase.from("users").select("full_name").eq("id", otherUserId).maybeSingle();
+      counterpartName = other?.full_name || (isClaimer ? post.finder_name : "Claimer");
+    } else {
+      counterpartName = isClaimer ? post.finder_name : "Claimer";
+    }
+
+    res.render("found_thread", {
+      post,
+      messages: messages.map((m) => ({ ...m, is_me: m.sender_user_id === userId, sender_name: senderMap[m.sender_user_id] || "User" })),
+      counterpartName
+    });
+  } catch (err) {
+    console.error("Found thread error:", err);
+    return flashRedirect(req, res, "/messages", "error", "Failed to load conversation.");
+  }
+});
+
+app.post("/found-messages/:postId", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.postId);
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, claimer_user_id").eq("id", postId).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+
+    const userId = req.session.userId;
+    if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).send("Forbidden");
+
+    const text = sanitize(req.body.message || "");
+    if (!text) return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Message cannot be empty.");
+    if (text.length > 1000) return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Message too long (max 1000 chars).");
+
+    await supabase.from("found_post_messages").insert({ found_post_id: postId, sender_user_id: userId, message: text });
+    return flashRedirect(req, res, `/found-messages/${postId}`, "success", "Message sent.");
+  } catch (err) {
+    console.error("Found messages send error:", err);
+    return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
   }
 });
 
@@ -863,6 +939,7 @@ app.get("/messages", requireAuth, async (req, res) => {
 
         return {
           id: r.id,
+          url: `/messages/${r.id}`,
           item_name: item.item_name,
           preview: latestMsgMap[r.id]?.message || r.message,
           status: r.status,
@@ -871,10 +948,48 @@ app.get("/messages", requireAuth, async (req, res) => {
           created_at: latestMsgMap[r.id]?.created_at || r.created_at
         };
       })
-      .filter(Boolean)
+      .filter(Boolean);
+
+    // Fetch found post threads where user is finder or claimer
+    const { data: foundPosts } = await supabase
+      .from("found_posts")
+      .select("id, item_name, status, finder_user_id, claimer_user_id, created_at")
+      .eq("status", "claimed")
+      .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
+
+    const foundConvos = await Promise.all((foundPosts || []).map(async (fp) => {
+      const { data: lastMsg } = await supabase
+        .from("found_post_messages")
+        .select("message, created_at")
+        .eq("found_post_id", fp.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const isClaimer = fp.claimer_user_id === req.session.userId;
+      const otherUserId = isClaimer ? fp.finder_user_id : fp.claimer_user_id;
+      let counterpartName = isClaimer ? "Finder" : "Claimer";
+      if (otherUserId) {
+        const { data: other } = await supabase.from("users").select("full_name").eq("id", otherUserId).maybeSingle();
+        if (other?.full_name) counterpartName = other.full_name;
+      }
+
+      return {
+        id: fp.id,
+        url: `/found-messages/${fp.id}`,
+        item_name: fp.item_name,
+        preview: lastMsg?.message || "Claim initiated",
+        status: "claimed",
+        role: isClaimer ? "claimer" : "finder",
+        counterpart_name: counterpartName,
+        created_at: lastMsg?.created_at || fp.created_at
+      };
+    }));
+
+    const allConversations = [...conversations, ...foundConvos]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    res.render("messages", { conversations });
+    res.render("messages", { conversations: allConversations });
   } catch (err) {
     console.error("Messages list error:", err);
     return flashRedirect(req, res, "/dashboard", "error", "Failed to load messages.");

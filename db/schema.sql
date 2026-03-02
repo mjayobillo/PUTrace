@@ -36,6 +36,8 @@ create table if not exists public.found_posts (
   id bigserial primary key,
   finder_name text not null,
   finder_email text not null,
+  finder_user_id uuid references public.users(id),
+  claimer_user_id uuid references public.users(id),
   item_name text not null,
   item_description text,
   category text default 'Other',
@@ -44,6 +46,17 @@ create table if not exists public.found_posts (
   status text not null default 'unclaimed',
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.found_post_messages (
+  id bigserial primary key,
+  found_post_id bigint not null references public.found_posts(id) on delete cascade,
+  sender_user_id uuid not null references public.users(id) on delete cascade,
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists found_post_messages_post_id_idx
+  on public.found_post_messages(found_post_id, created_at);
 
 create table if not exists public.report_messages (
   id bigserial primary key,

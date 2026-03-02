@@ -72,11 +72,11 @@
     <% } %>
   </section>
 <% } else { %>
-  <p style="color:#888;margin-bottom:1rem;font-size:0.9rem;"><%= posts.length %> item<%= posts.length > 1 ? 's' : '' %> found and unclaimed</p>
+  <p style="color:#888;margin-bottom:1rem;font-size:0.9rem;"><%= posts.filter(p => p.status === 'unclaimed').length %> item<%= posts.filter(p => p.status === 'unclaimed').length !== 1 ? 's' : '' %> unclaimed</p>
 
   <div class="lost-grid">
     <% posts.forEach((post) => { %>
-      <article class="lost-card">
+      <article class="lost-card<%= post.status === 'claimed' ? ' lost-card-claimed' : '' %>">
         <div class="lost-card-header">
           <div>
             <h3><%= post.item_name %></h3>
@@ -84,7 +84,11 @@
               <span class="badge badge-category"><%= post.category %></span>
             <% } %>
           </div>
-          <span class="badge badge-active">Found</span>
+          <% if (post.status === 'claimed') { %>
+            <span class="badge badge-resolved">Claimed</span>
+          <% } else { %>
+            <span class="badge badge-active">Found</span>
+          <% } %>
         </div>
         <% if (post.image_url) { %>
           <div class="item-image-wrap">
@@ -99,7 +103,14 @@
           <% } %>
           <span>&#183; <%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>, <%= new Date(post.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %></span>
         </div>
-        <% if (currentUser) { %>
+        <% if (post.status === 'claimed') { %>
+          <% const isInvolved = currentUser && (post.finder_user_id === currentUser.id || post.claimer_user_id === currentUser.id); %>
+          <% if (isInvolved) { %>
+            <a href="/found-messages/<%= post.id %>" class="button btn-sm btn-outline" style="width:100%;margin-top:0.8rem;">View Chat</a>
+          <% } else { %>
+            <p style="margin-top:0.8rem;font-size:0.85rem;color:#aaa;text-align:center;">This item has been claimed.</p>
+          <% } %>
+        <% } else if (currentUser) { %>
           <button type="button" class="btn-sm btn-success" style="width:100%;margin-top:0.8rem;" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= post.finder_email %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">This is mine &mdash; Claim it</button>
         <% } else { %>
           <p style="margin-top:0.8rem;font-size:0.85rem;color:#888;text-align:center;">
