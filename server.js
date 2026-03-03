@@ -1459,18 +1459,18 @@ app.get("/admin", requireAdmin, async (req, res) => {
     const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, finder_user_id, image_url, item_description, location_found").order("created_at", { ascending: false });
     const { data: reports } = await supabase.from("finder_reports").select("id, item_id, finder_name, finder_email, message, status, created_at").order("created_at", { ascending: false });
 
-    // Attach item names to reports
+    // Attach item names + images to reports
     const itemIds = [...new Set((reports || []).map(r => r.item_id))];
-    let itemNameMap = {};
+    let itemMap = {};
     if (itemIds.length > 0) {
-      const { data: items } = await supabase.from("items").select("id, item_name").in("id", itemIds);
-      itemNameMap = Object.fromEntries((items || []).map(i => [i.id, i.item_name]));
+      const { data: items } = await supabase.from("items").select("id, item_name, image_url").in("id", itemIds);
+      itemMap = Object.fromEntries((items || []).map(i => [i.id, i]));
     }
 
     res.render("admin", {
       users: users || [],
       foundPosts: foundPosts || [],
-      reports: (reports || []).map(r => ({ ...r, item_name: itemNameMap[r.item_id] || "Unknown" }))
+      reports: (reports || []).map(r => ({ ...r, item_name: itemMap[r.item_id]?.item_name || "Unknown", item_image: itemMap[r.item_id]?.image_url || null }))
     });
   } catch (err) {
     console.error("Admin panel error:", err);
