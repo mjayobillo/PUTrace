@@ -103,7 +103,7 @@
             <tr>
               <td style="width:56px;">
                 <% if (p.image_url) { %>
-                  <img src="<%= p.image_url %>" alt="<%= p.item_name %>" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" onclick="showAdminImg('<%= p.image_url %>', '<%= p.item_name.replace(/'/g, &quot;\\&#39;&quot;) %>')" />
+                  <img src="<%= p.image_url %>" alt="<%= p.item_name %>" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" data-img="<%= p.image_url %>" data-label="<%= p.item_name %>" onclick="showAdminImg(this.dataset.img, this.dataset.label)" />
                 <% } else { %>
                   <div style="width:48px;height:48px;background:#f0f2f5;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:1.2rem;">?</div>
                 <% } %>
