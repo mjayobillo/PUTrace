@@ -1456,7 +1456,7 @@ app.post("/item/:id/delete", requireAuth, async (req, res) => {
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const { data: users } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").order("created_at", { ascending: false });
-    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, finder_user_id").order("created_at", { ascending: false });
+    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, finder_user_id, image_url, item_description, location_found").order("created_at", { ascending: false });
     const { data: reports } = await supabase.from("finder_reports").select("id, item_id, finder_name, finder_email, message, status, created_at").order("created_at", { ascending: false });
 
     // Attach item names to reports
@@ -1475,6 +1475,35 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("Admin panel error:", err);
     return flashRedirect(req, res, "/dashboard", "error", "Failed to load admin panel.");
+  }
+});
+
+app.get("/admin/users/:id", requireAdmin, async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const { data: user } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").eq("id", userId).maybeSingle();
+    if (!user) return flashRedirect(req, res, "/admin", "error", "User not found.");
+
+    const { data: items } = await supabase.from("items").select("id, item_name, item_status, category, image_url, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, status, image_url, location_found, created_at").eq("finder_user_id", userId).order("created_at", { ascending: false });
+    const { data: reports } = await supabase.from("finder_reports").select("id, item_id, message, status, created_at").eq("finder_email", user.email).order("created_at", { ascending: false });
+
+    const itemIds = [...new Set((reports || []).map(r => r.item_id))];
+    let itemNameMap = {};
+    if (itemIds.length > 0) {
+      const { data: its } = await supabase.from("items").select("id, item_name").in("id", itemIds);
+      itemNameMap = Object.fromEntries((its || []).map(i => [i.id, i.item_name]));
+    }
+
+    res.render("admin_user", {
+      user,
+      items: items || [],
+      foundPosts: foundPosts || [],
+      reports: (reports || []).map(r => ({ ...r, item_name: itemNameMap[r.item_id] || "Unknown" }))
+    });
+  } catch (err) {
+    console.error("Admin user detail error:", err);
+    return flashRedirect(req, res, "/admin", "error", "Failed to load user details.");
   }
 });
 

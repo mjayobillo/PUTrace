@@ -1,0 +1,128 @@
+<%- include('_header') %>
+
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+  <a href="/admin" class="button btn-sm btn-outline">← Admin</a>
+  <h2 style="font-size:1.4rem;margin:0;">User Activity</h2>
+</div>
+
+<!-- User card -->
+<section class="card" style="margin-bottom:1.2rem;">
+  <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;">
+    <div class="account-avatar" style="width:52px;height:52px;font-size:1.4rem;"><%= user.full_name.charAt(0).toUpperCase() %></div>
+    <div style="flex:1;">
+      <div style="font-size:1.15rem;font-weight:700;"><%= user.full_name %></div>
+      <div style="color:#888;font-size:0.88rem;"><%= user.email %></div>
+      <div style="margin-top:0.4rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <% if (user.is_admin) { %>
+          <span class="badge badge-active">Admin</span>
+        <% } %>
+        <% if (user.is_banned) { %>
+          <span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">Banned</span>
+        <% } %>
+        <span class="badge badge-none">Joined <%= new Date(user.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+      </div>
+    </div>
+    <% if (!user.is_admin) { %>
+      <% if (user.is_banned) { %>
+        <form method="post" action="/admin/users/<%= user.id %>/unban">
+          <button class="btn-sm btn-outline">Unban</button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/admin/users/<%= user.id %>/ban" onsubmit="return confirm('Ban <%= user.full_name %>?')">
+          <button class="btn-sm btn-danger">Ban User</button>
+        </form>
+      <% } %>
+    <% } %>
+  </div>
+</section>
+
+<!-- Registered Items -->
+<section class="card" style="margin-bottom:1.2rem;">
+  <h3 style="margin-bottom:1rem;"><i data-lucide="tag" class="inline-icon"></i> Registered Items (<%= items.length %>)</h3>
+  <% if (items.length === 0) { %>
+    <p class="muted">No registered items.</p>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      <% items.forEach((item) => { %>
+        <div style="display:flex;gap:1rem;align-items:center;padding:0.65rem 0.75rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8f9fc;">
+          <% if (item.image_url) { %>
+            <img src="<%= item.image_url %>" alt="<%= item.item_name %>" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer;" onclick="showAdminImg('<%= item.image_url %>', '<%= item.item_name.replace(/'/g, "\\'") %>')" />
+          <% } else { %>
+            <div style="width:52px;height:52px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;flex-shrink:0;">?</div>
+          <% } %>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;"><%= item.item_name %></div>
+            <div style="font-size:0.82rem;color:#888;"><%= item.category %> &bull; <%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></div>
+          </div>
+          <span class="badge <%= item.item_status === 'active' ? 'badge-active' : item.item_status === 'lost' ? 'badge-lost' : 'badge-resolved' %>"><%= item.item_status %></span>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<!-- Found Posts -->
+<section class="card" style="margin-bottom:1.2rem;">
+  <h3 style="margin-bottom:1rem;"><i data-lucide="package-open" class="inline-icon"></i> Found Board Posts (<%= foundPosts.length %>)</h3>
+  <% if (foundPosts.length === 0) { %>
+    <p class="muted">No found posts.</p>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      <% foundPosts.forEach((p) => { %>
+        <div style="display:flex;gap:1rem;align-items:center;padding:0.65rem 0.75rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8f9fc;">
+          <% if (p.image_url) { %>
+            <img src="<%= p.image_url %>" alt="<%= p.item_name %>" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer;" onclick="showAdminImg('<%= p.image_url %>', '<%= p.item_name.replace(/'/g, "\\'") %>')" />
+          <% } else { %>
+            <div style="width:52px;height:52px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;flex-shrink:0;">?</div>
+          <% } %>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;"><%= p.item_name %></div>
+            <% if (p.location_found) { %><div style="font-size:0.82rem;color:#888;">📍 <%= p.location_found %></div><% } %>
+            <div style="font-size:0.82rem;color:#aaa;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></div>
+          </div>
+          <span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status %></span>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<!-- Sighting Reports -->
+<section class="card">
+  <h3 style="margin-bottom:1rem;"><i data-lucide="eye" class="inline-icon"></i> Sighting Reports Sent (<%= reports.length %>)</h3>
+  <% if (reports.length === 0) { %>
+    <p class="muted">No sighting reports sent.</p>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      <% reports.forEach((r) => { %>
+        <div style="padding:0.65rem 0.75rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8f9fc;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+            <strong><%= r.item_name %></strong>
+            <div style="display:flex;gap:0.4rem;align-items:center;">
+              <span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status %></span>
+              <span style="font-size:0.82rem;color:#aaa;"><%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></span>
+            </div>
+          </div>
+          <p style="margin-top:0.3rem;font-size:0.87rem;color:#666;"><%= r.message %></p>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<!-- Image lightbox -->
+<div id="adminImgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;" onclick="this.style.display='none'">
+  <div style="max-width:90vw;max-height:90vh;text-align:center;">
+    <img id="adminImgEl" src="" alt="" style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    <p id="adminImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
+  </div>
+</div>
+<script>
+  function showAdminImg(src, label) {
+    document.getElementById('adminImgEl').src = src;
+    document.getElementById('adminImgLabel').textContent = label;
+    document.getElementById('adminImgModal').style.display = 'flex';
+  }
+</script>
+
+<%- include('_footer') %>

@@ -45,7 +45,7 @@
         <tbody>
           <% users.forEach((u) => { %>
             <tr class="<%= u.is_banned ? 'admin-row-banned' : '' %>">
-              <td><%= u.full_name %></td>
+              <td><a href="/admin/users/<%= u.id %>" style="font-weight:600;color:#3a56e4;"><%= u.full_name %></a></td>
               <td style="font-size:0.85rem;color:#666;"><%= u.email %></td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(u.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' }) %></td>
               <td>
@@ -90,6 +90,7 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th>Photo</th>
             <th>Item</th>
             <th>Posted by</th>
             <th>Status</th>
@@ -100,7 +101,18 @@
         <tbody>
           <% foundPosts.forEach((p) => { %>
             <tr>
-              <td><strong><%= p.item_name %></strong></td>
+              <td style="width:56px;">
+                <% if (p.image_url) { %>
+                  <img src="<%= p.image_url %>" alt="<%= p.item_name %>" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" onclick="showAdminImg('<%= p.image_url %>', '<%= p.item_name.replace(/'/g, &quot;\\&#39;&quot;) %>')" />
+                <% } else { %>
+                  <div style="width:48px;height:48px;background:#f0f2f5;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:1.2rem;">?</div>
+                <% } %>
+              </td>
+              <td>
+                <strong><%= p.item_name %></strong>
+                <% if (p.item_description) { %><br><span style="font-size:0.8rem;color:#888;"><%= p.item_description.substring(0,60) %><%= p.item_description.length > 60 ? '…' : '' %></span><% } %>
+                <% if (p.location_found) { %><br><span style="font-size:0.78rem;color:#aaa;"><i data-lucide="map-pin" style="width:0.7rem;height:0.7rem;display:inline;vertical-align:middle;"></i> <%= p.location_found %></span><% } %>
+              </td>
               <td style="font-size:0.85rem;color:#666;"><%= p.finder_name %></td>
               <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status %></span></td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></td>
@@ -153,5 +165,20 @@
     </div>
   <% } %>
 </section>
+
+<!-- Image lightbox -->
+<div id="adminImgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;" onclick="this.style.display='none'">
+  <div style="max-width:90vw;max-height:90vh;text-align:center;">
+    <img id="adminImgEl" src="" alt="" style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    <p id="adminImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
+  </div>
+</div>
+<script>
+  function showAdminImg(src, label) {
+    document.getElementById('adminImgEl').src = src;
+    document.getElementById('adminImgLabel').textContent = label;
+    document.getElementById('adminImgModal').style.display = 'flex';
+  }
+</script>
 
 <%- include('_footer') %>
