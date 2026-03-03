@@ -7,12 +7,12 @@
 
 <section class="card">
   <form method="get" action="/lost" class="search-filters">
-    <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:flex-end;">
-      <label style="flex:1;min-width:180px;">
-        <i data-lucide="search" class="inline-icon"></i> Search
+    <div class="board-filter-row">
+      <label class="board-filter-search">
+        Search
         <input type="text" name="search" value="<%= search %>" placeholder="Search lost items..." />
       </label>
-      <label style="min-width:140px;">
+      <label class="board-filter-category">
         Category
         <select name="category">
           <option value="">All</option>
@@ -21,9 +21,9 @@
           <% }) %>
         </select>
       </label>
-      <button type="submit" class="btn-sm">Filter</button>
+      <button type="submit" class="btn-sm board-filter-btn">Filter</button>
       <% if (search || filterCategory) { %>
-        <a href="/lost" class="button btn-sm btn-outline">Clear</a>
+        <a href="/lost" class="button btn-sm btn-outline board-filter-btn">Clear</a>
       <% } %>
     </div>
   </form>
@@ -58,13 +58,24 @@
           </div>
           <% if (item.image_url) { %>
             <div class="item-image-wrap">
-              <img src="<%= item.image_url %>" alt="<%= item.item_name %>" class="item-image" />
+              <img src="<%= item.image_url %>" alt="<%= item.item_name %>" class="item-image" style="cursor:pointer;" data-img="<%= item.image_url %>" data-label="<%= item.item_name %>" onclick="showBoardImg(this.dataset.img, this.dataset.label)" />
+            </div>
+          <% } else { %>
+            <div class="item-image-wrap item-image-placeholder">
+              <div class="item-image-placeholder-inner">
+                <i data-lucide="image-off" style="width:2rem;height:2rem;color:#3a56e4;"></i>
+                <strong>No photo provided</strong>
+                <span>Use the description and category to identify the item.</span>
+              </div>
             </div>
           <% } %>
           <p class="lost-card-desc"><%= item.item_description || 'No description provided' %></p>
           <div class="lost-card-meta">
             <span>Posted by <strong><%= item.owner_first_name %></strong></span>
-            <span><%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></span>
+            <span>
+              <%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
+              <%= new Date(item.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
+            </span>
           </div>
         </div>
         <div class="lost-card-form-panel">
@@ -100,7 +111,21 @@
   </div>
 </div>
 
+<div id="boardImgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;" onclick="this.style.display='none'">
+  <div style="max-width:90vw;max-height:90vh;text-align:center;">
+    <img id="boardImgEl" src="" alt="" style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    <p id="boardImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
+  </div>
+</div>
+
 <script>
+  function showBoardImg(src, label) {
+    document.getElementById('boardImgEl').src = src;
+    document.getElementById('boardImgEl').alt = label || 'Item image';
+    document.getElementById('boardImgLabel').textContent = label || '';
+    document.getElementById('boardImgModal').style.display = 'flex';
+  }
+
   (function () {
     var modal = document.getElementById('sighting-confirm-modal');
     var confirmBtn = document.getElementById('sighting-modal-confirm');
@@ -128,7 +153,13 @@
     cancelBtn.addEventListener('click', closeModal);
     closeBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeModal();
+        var imgModal = document.getElementById('boardImgModal');
+        if (imgModal) imgModal.style.display = 'none';
+      }
+    });
   })();
 </script>
 

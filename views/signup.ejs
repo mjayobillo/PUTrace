@@ -7,7 +7,12 @@
   <div class="school-email-note"><i data-lucide="graduation-cap" class="inline-icon"></i> A <strong>@panpacificu.edu.ph</strong> email is required to register.</div>
   <form method="post" action="/signup">
     <label>Full name <input name="full_name" required placeholder="Juan dela Cruz" /></label>
-    <label>Email <input type="email" name="email" required placeholder="you@panpacificu.edu.ph" /></label>
+    <label>School email
+      <div style="display:flex;align-items:center;border:1px solid #d9e0ea;border-radius:10px;overflow:hidden;background:#fff;">
+        <input type="text" name="email" required placeholder="name" autocapitalize="none" autocomplete="username" spellcheck="false" style="border:0;border-radius:0;box-shadow:none;flex:1;" />
+        <span style="padding:0 0.9rem;color:#667085;background:#f8f9fc;border-left:1px solid #e5e7eb;white-space:nowrap;">@panpacificu.edu.ph</span>
+      </div>
+    </label>
     <label>Password <small style="font-weight:400;color:#aaa;">(min 8 characters)</small>
       <div class="password-wrap">
         <input type="password" name="password" id="signupPassword" required minlength="8" placeholder="Create a strong password" />

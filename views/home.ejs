@@ -2,14 +2,14 @@
 
 <section class="hero">
   <h2>Your lost item,<br>back in your hands.</h2>
-  <p>Stick a QR code on anything you own. If it gets lost, whoever finds it can reach you in minutes &mdash; no phone calls, no guard office, no luck required.</p>
+  <p>Stick a QR code on anything you own. If it gets lost, whoever finds it can reach you in minutes &mdash; no guard office, no lucky Facebook post, no guessing.</p>
   <div class="hero-actions">
     <% if (currentUser) { %>
       <a class="button" href="/dashboard">Go to Dashboard</a>
       <a class="button hero-secondary-btn" href="/lost">Lost Board</a>
       <a class="button hero-secondary-btn" href="/found-items">Found Board</a>
     <% } else { %>
-      <a class="button" href="/signup">Get Started for Free</a>
+      <a class="button" href="/signup">Get Started</a>
       <a class="button hero-secondary-btn" href="/login">Login</a>
     <% } %>
   </div>
@@ -58,7 +58,7 @@
           <div class="proof-cta-mock">Report Found Item</div>
         </div>
       </div>
-      <p class="proof-step-label">Your contact info appears immediately</p>
+      <p class="proof-step-label">Finder logs in to view the owner and send a report</p>
     </div>
 
     <div class="proof-arrow"><i data-lucide="chevron-right"></i></div>

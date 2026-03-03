@@ -20,9 +20,9 @@
 </section>
 
 <section class="card">
-  <div class="chat-thread">
+  <div class="chat-thread" id="found-chat-thread">
     <% if (!messages || messages.length === 0) { %>
-      <p class="muted">No messages yet. Start the conversation below.</p>
+      <p class="muted" id="found-chat-empty">No messages yet. Start the conversation below.</p>
     <% } else { %>
       <% messages.forEach((m) => { %>
         <div class="chat-bubble <%= m.is_me ? 'mine' : 'theirs' %>">
@@ -35,9 +35,10 @@
   </div>
 
   <% if (post.status === 'returned') { %>
-    <p class="muted" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This item has been returned. The conversation is now closed.</p>
+    <p class="muted" id="found-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This item has been returned. The conversation is now closed.</p>
   <% } else { %>
-  <form method="post" action="/found-messages/<%= post.id %>">
+  <p class="muted" id="found-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This item has been returned. The conversation is now closed.</p>
+  <form method="post" action="/found-messages/<%= post.id %>" id="found-message-form">
     <label>Message
       <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
     </label>
@@ -48,8 +49,79 @@
 
 <script>
   (function () {
-    var thread = document.querySelector('.chat-thread');
-    if (thread) thread.scrollTop = thread.scrollHeight;
+    var thread = document.getElementById('found-chat-thread');
+    var form = document.getElementById('found-message-form');
+    var closedNote = document.getElementById('found-closed-note');
+    var pollUrl = '/found-messages/<%= post.id %>/poll';
+    var previousCount = <%= messages.length %>;
+    var isPolling = false;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(value) {
+      return new Date(value).toLocaleString('en-US', {
+        timeZone: 'Asia/Manila',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    }
+
+    function renderMessages(messages) {
+      if (!thread) return;
+      if (!messages || messages.length === 0) {
+        thread.innerHTML = '<p class="muted" id="found-chat-empty">No messages yet. Start the conversation below.</p>';
+        return;
+      }
+
+      thread.innerHTML = messages.map(function (m) {
+        return '<div class="chat-bubble ' + (m.is_me ? 'mine' : 'theirs') + '">' +
+          '<div class="chat-meta">' + escapeHtml(m.is_me ? 'You' : m.sender_name) + '</div>' +
+          '<div>' + escapeHtml(m.message) + '</div>' +
+          '<div class="chat-time"><small>' + escapeHtml(formatDate(m.created_at)) + '</small></div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function syncStatus(status) {
+      var isClosed = status === 'returned';
+      if (closedNote) closedNote.style.display = isClosed ? 'block' : 'none';
+      if (form) form.style.display = isClosed ? 'none' : '';
+    }
+
+    function stickToBottom() {
+      if (thread) thread.scrollTop = thread.scrollHeight;
+    }
+
+    async function poll() {
+      if (isPolling) return;
+      isPolling = true;
+      try {
+        var response = await fetch(pollUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        if (!response.ok) return;
+        var payload = await response.json();
+        var messages = payload.messages || [];
+        var nearBottom = !thread || (thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80);
+        renderMessages(messages);
+        syncStatus(payload.status);
+        if (nearBottom || messages.length > previousCount) stickToBottom();
+        previousCount = messages.length;
+      } catch (err) {
+      } finally {
+        isPolling = false;
+      }
+    }
+
+    stickToBottom();
+    window.setInterval(poll, 4000);
   })();
 </script>
 

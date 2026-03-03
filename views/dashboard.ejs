@@ -65,7 +65,7 @@
 
   <% if (!items || items.length === 0) { %>
     <div class="center-text empty-state">
-      <div class="empty-icon">...</div>
+      <div class="empty-icon"><i data-lucide="package-search" style="width:3rem;height:3rem;color:#b8c1d8;"></i></div>
       <% if (search || filterCategory || filterStatus) { %>
         <p>No items match your filters. <a href="/dashboard">Clear filters</a></p>
       <% } else { %>
@@ -85,7 +85,7 @@
   <h2>Activity</h2>
   <% if (totalActivity === 0) { %>
     <div class="center-text empty-state">
-      <div class="empty-icon">...</div>
+      <div class="empty-icon"><i data-lucide="inbox" style="width:3rem;height:3rem;color:#b8c1d8;"></i></div>
       <p>No activity yet. When someone scans your QR code or you claim a found item, it will appear here.</p>
     </div>
   <% } else { %>
@@ -122,4 +122,63 @@
     </div>
   <% } %>
 </section>
+
+<div id="delete-confirm-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+  <div class="modal-box modal-box-error">
+    <button type="button" class="modal-close" id="delete-confirm-close" aria-label="Close delete confirmation">&times;</button>
+    <div style="text-align:center;margin-bottom:0.8rem;"><i data-lucide="trash-2" style="width:2.2rem;height:2.2rem;color:#e74c3c;"></i></div>
+    <h3 id="delete-confirm-title" class="error-title">Delete item?</h3>
+    <p id="delete-confirm-message" class="error-message">This action cannot be undone.</p>
+    <div class="success-actions">
+      <button type="button" class="btn-sm btn-outline" id="delete-confirm-cancel">Cancel</button>
+      <button type="button" class="btn-sm btn-danger" id="delete-confirm-submit">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var modal = document.getElementById('delete-confirm-modal');
+    var titleEl = document.getElementById('delete-confirm-title');
+    var messageEl = document.getElementById('delete-confirm-message');
+    var closeBtn = document.getElementById('delete-confirm-close');
+    var cancelBtn = document.getElementById('delete-confirm-cancel');
+    var submitBtn = document.getElementById('delete-confirm-submit');
+    var pendingForm = null;
+
+    if (!modal || !titleEl || !messageEl || !submitBtn) return;
+
+    function closeModal() {
+      modal.style.display = 'none';
+      pendingForm = null;
+    }
+
+    document.querySelectorAll('.delete-confirm-form').forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        pendingForm = form;
+        var label = form.dataset.deleteLabel || 'this item';
+        var message = form.dataset.deleteMessage || 'Delete this item?';
+        titleEl.textContent = 'Delete "' + label + '"?';
+        messageEl.textContent = message;
+        modal.style.display = 'flex';
+        submitBtn.focus();
+      });
+    });
+
+    submitBtn.addEventListener('click', function () {
+      if (!pendingForm) return;
+      modal.style.display = 'none';
+      pendingForm.submit();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeModal();
+    });
+  })();
+</script>
 <%- include('_footer') %>

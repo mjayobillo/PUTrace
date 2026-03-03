@@ -80,7 +80,7 @@
             <% if (p.location_found) { %><div style="font-size:0.82rem;color:#888;">📍 <%= p.location_found %></div><% } %>
             <div style="font-size:0.82rem;color:#aaa;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></div>
           </div>
-          <span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status %></span>
+          <span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status === 'claimed' ? 'claim pending' : p.status %></span>
         </div>
       <% }) %>
     </div>

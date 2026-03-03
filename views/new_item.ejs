@@ -5,6 +5,7 @@
     <h2 class="section-title">Register New Item</h2>
     <a href="/dashboard" class="button btn-sm btn-outline">Back to Dashboard</a>
   </div>
+  <p class="register-item-intro">Add your item details below. We’ll generate a QR code you can save and attach so anyone who finds it can contact you quickly.</p>
 
   <form method="post" action="/items/new" enctype="multipart/form-data" class="dashboard-form">
     <label>Item name
@@ -19,16 +20,68 @@
       </select>
     </label>
 
-    <label>Description <small class="field-note">(optional)</small>
-      <textarea name="item_description" rows="3" maxlength="1000" placeholder="Color, brand, distinguishing marks..."></textarea>
+    <label>Item details <small class="field-note">(optional)</small>
+      <textarea name="item_description" rows="3" maxlength="1000" placeholder="Color, brand, stickers, scratches, initials, case, or other identifying marks..."></textarea>
     </label>
 
     <label>Photo <small class="field-note">(optional, max 5 MB)</small>
-      <input type="file" name="image" accept="image/*" class="file-input-tight" />
+      <span class="register-item-photo-note">Optional, but helpful for easier identification.</span>
+      <input type="file" name="image" accept="image/*" class="file-input-tight" id="register-item-image-input" />
     </label>
+    <div id="register-item-preview" class="register-item-preview" style="display:none;">
+      <div class="register-item-preview-card">
+        <img id="register-item-preview-img" src="" alt="Selected item preview" class="register-item-preview-img" />
+        <div class="register-item-preview-copy">
+          <strong>Photo preview</strong>
+          <span>Check that the uploaded image clearly shows the item.</span>
+        </div>
+        <button type="button" id="register-item-preview-remove" class="register-item-preview-remove" aria-label="Remove selected photo" title="Remove selected photo">&times;</button>
+      </div>
+    </div>
 
-    <button type="submit">Generate QR Code</button>
+    <p class="register-item-outcome">After submitting, your QR code will be available from the dashboard.</p>
+
+    <button type="submit">Register Item &amp; Generate QR</button>
   </form>
 </section>
+
+<script>
+  (function () {
+    var input = document.getElementById('register-item-image-input');
+    var previewWrap = document.getElementById('register-item-preview');
+    var previewImg = document.getElementById('register-item-preview-img');
+    var removeBtn = document.getElementById('register-item-preview-remove');
+
+    if (!input || !previewWrap || !previewImg || !removeBtn) return;
+
+    function clearPreview() {
+      input.value = '';
+      previewImg.src = '';
+      previewWrap.style.display = 'none';
+    }
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) {
+        clearPreview();
+        return;
+      }
+
+      if (!file.type || file.type.indexOf('image/') !== 0) {
+        clearPreview();
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function (event) {
+        previewImg.src = event.target.result;
+        previewWrap.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    removeBtn.addEventListener('click', clearPreview);
+  })();
+</script>
 
 <%- include('_footer') %>

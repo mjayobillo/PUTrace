@@ -38,9 +38,11 @@
             </div>
             <p style="margin:0;font-size:0.9rem;color:#333;word-break:break-word;"><%= m.message %></p>
           </div>
-          <form method="post" action="/admin/messages/<%= threadType %>/<%= m.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this message?')" style="flex-shrink:0;">
-            <button type="submit" class="btn-sm btn-danger" title="Delete message">✕</button>
-          </form>
+          <% if (m.can_delete !== false) { %>
+            <form method="post" action="/admin/messages/<%= threadType %>/<%= m.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this message?')" style="flex-shrink:0;">
+              <button type="submit" class="btn-sm btn-danger" title="Delete message">✕</button>
+            </form>
+          <% } %>
         </div>
       <% }) %>
     </div>

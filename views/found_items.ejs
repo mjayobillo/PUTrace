@@ -37,12 +37,12 @@
 <!-- Search & Filter -->
 <section class="card">
   <form method="get" action="/found-items" class="search-filters">
-    <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:flex-end;">
-      <label style="flex:1;min-width:180px;">
-        <i data-lucide="search" class="inline-icon"></i> Search
+    <div class="board-filter-row">
+      <label class="board-filter-search">
+        Search
         <input type="text" name="search" value="<%= search %>" placeholder="Search found items..." />
       </label>
-      <label style="min-width:140px;">
+      <label class="board-filter-category">
         Category
         <select name="category">
           <option value="">All</option>
@@ -51,9 +51,9 @@
           <% }) %>
         </select>
       </label>
-      <button type="submit" class="btn-sm">Filter</button>
+      <button type="submit" class="btn-sm board-filter-btn">Filter</button>
       <% if (search || filterCategory) { %>
-        <a href="/found-items" class="button btn-sm btn-outline">Clear</a>
+        <a href="/found-items" class="button btn-sm btn-outline board-filter-btn">Clear</a>
       <% } %>
     </div>
   </form>
@@ -85,14 +85,22 @@
             <% } %>
           </div>
           <% if (post.status === 'claimed') { %>
-            <span class="badge badge-resolved">Claimed</span>
+            <span class="badge badge-open">Claim Pending</span>
           <% } else { %>
             <span class="badge badge-active">Found</span>
           <% } %>
         </div>
         <% if (post.image_url) { %>
           <div class="item-image-wrap">
-            <img src="<%= post.image_url %>" alt="<%= post.item_name %>" class="item-image" />
+            <img src="<%= post.image_url %>" alt="<%= post.item_name %>" class="item-image" style="cursor:pointer;" data-img="<%= post.image_url %>" data-label="<%= post.item_name %>" onclick="showBoardImg(this.dataset.img, this.dataset.label)" />
+          </div>
+        <% } else { %>
+          <div class="item-image-wrap item-image-placeholder">
+            <div class="item-image-placeholder-inner">
+              <i data-lucide="image-off" style="width:2rem;height:2rem;color:#3a56e4;"></i>
+              <strong>No photo provided</strong>
+              <span>Use the description and location to verify the item.</span>
+            </div>
           </div>
         <% } %>
         <p class="lost-card-desc"><%= post.item_description || 'No description provided' %></p>
@@ -108,12 +116,12 @@
           <% if (isInvolved) { %>
             <a href="/found-messages/<%= post.id %>" class="button btn-sm btn-outline" style="width:100%;margin-top:0.8rem;">View Chat</a>
           <% } else { %>
-            <p style="margin-top:0.8rem;font-size:0.85rem;color:#aaa;text-align:center;">This item has been claimed.</p>
+            <p style="margin-top:0.8rem;font-size:0.85rem;color:#aaa;text-align:center;">This item currently has a pending claim.</p>
           <% } %>
         <% } else if (currentUser && post.finder_user_id === currentUser.id) { %>
           <div style="display:flex;gap:0.5rem;margin-top:0.8rem;">
             <p style="flex:1;font-size:0.85rem;color:#aaa;margin:0;line-height:1.4;">This is your post.</p>
-            <form method="post" action="/found-items/<%= post.id %>/delete" onsubmit="return confirm('Remove this post from the board?')" style="flex-shrink:0;">
+            <form method="post" action="/found-items/<%= post.id %>/delete" class="delete-confirm-form" data-delete-label="<%= post.item_name %>" data-delete-message="Remove this post from the board?" style="flex-shrink:0;">
               <button type="submit" class="btn-sm btn-danger">Remove</button>
             </form>
           </div>
@@ -155,7 +163,34 @@
   </div>
 </div>
 
+<div id="boardImgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;" onclick="this.style.display='none'">
+  <div style="max-width:90vw;max-height:90vh;text-align:center;">
+    <img id="boardImgEl" src="" alt="" style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    <p id="boardImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
+  </div>
+</div>
+
+<div id="delete-confirm-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+  <div class="modal-box modal-box-error">
+    <button type="button" class="modal-close" id="delete-confirm-close" aria-label="Close delete confirmation">&times;</button>
+    <div style="text-align:center;margin-bottom:0.8rem;"><i data-lucide="trash-2" style="width:2.2rem;height:2.2rem;color:#e74c3c;"></i></div>
+    <h3 id="delete-confirm-title" class="error-title">Remove post?</h3>
+    <p id="delete-confirm-message" class="error-message">This action cannot be undone.</p>
+    <div class="success-actions">
+      <button type="button" class="btn-sm btn-outline" id="delete-confirm-cancel">Cancel</button>
+      <button type="button" class="btn-sm btn-danger" id="delete-confirm-submit">Remove</button>
+    </div>
+  </div>
+</div>
+
 <script>
+  function showBoardImg(src, label) {
+    document.getElementById('boardImgEl').src = src;
+    document.getElementById('boardImgEl').alt = label || 'Item image';
+    document.getElementById('boardImgLabel').textContent = label || '';
+    document.getElementById('boardImgModal').style.display = 'flex';
+  }
+
   function showClaimModal(itemName, finderName, location, postId) {
     document.getElementById('modalTitle').textContent = 'Claim "' + itemName + '"';
     document.getElementById('modalFinderName').textContent = finderName;
@@ -174,6 +209,54 @@
   document.getElementById('claimModal').addEventListener('click', function(e) {
     if (e.target === this) closeClaimModal();
   });
+  (function () {
+    var modal = document.getElementById('delete-confirm-modal');
+    var titleEl = document.getElementById('delete-confirm-title');
+    var messageEl = document.getElementById('delete-confirm-message');
+    var closeBtn = document.getElementById('delete-confirm-close');
+    var cancelBtn = document.getElementById('delete-confirm-cancel');
+    var submitBtn = document.getElementById('delete-confirm-submit');
+    var pendingForm = null;
+
+    if (!modal || !titleEl || !messageEl || !submitBtn) return;
+
+    function closeDeleteModal() {
+      modal.style.display = 'none';
+      pendingForm = null;
+    }
+
+    document.querySelectorAll('.delete-confirm-form').forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        pendingForm = form;
+        var label = form.dataset.deleteLabel || 'this post';
+        var message = form.dataset.deleteMessage || 'Remove this post?';
+        titleEl.textContent = 'Remove "' + label + '"?';
+        messageEl.textContent = message;
+        modal.style.display = 'flex';
+        submitBtn.focus();
+      });
+    });
+
+    submitBtn.addEventListener('click', function () {
+      if (!pendingForm) return;
+      modal.style.display = 'none';
+      pendingForm.submit();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeDeleteModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeDeleteModal);
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) closeDeleteModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeClaimModal();
+        closeDeleteModal();
+        var imgModal = document.getElementById('boardImgModal');
+        if (imgModal) imgModal.style.display = 'none';
+      }
+    });
+  })();
 </script>
 
 <%- include('_footer') %>

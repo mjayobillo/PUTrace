@@ -49,6 +49,13 @@ function isSchoolEmail(email) {
   return isValidEmail(normalized) && normalized.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
+function normalizeSchoolEmailInput(value) {
+  const normalized = sanitize(value).toLowerCase();
+  if (!normalized) return "";
+  if (normalized.includes("@")) return normalized;
+  return `${normalized}@${ALLOWED_EMAIL_DOMAIN}`;
+}
+
 // Generate a random token for QR codes
 function generateToken() {
   return crypto.randomBytes(16).toString("hex");
@@ -266,6 +273,16 @@ function flashRedirect(req, res, path, type, message) {
   return res.redirect(path);
 }
 
+function serializeChatMessage(message, currentUserId) {
+  return {
+    id: message.id,
+    sender_name: message.sender_name || "User",
+    message: message.message,
+    created_at: message.created_at,
+    is_me: message.sender_user_id === currentUserId
+  };
+}
+
 // Keep category values consistent
 function normalizeCategory(category) {
   return CATEGORIES.includes(category) ? category : "Other";
@@ -355,7 +372,7 @@ app.get("/signup", (req, res) => res.render("signup"));
 app.post("/signup", async (req, res) => {
   try {
     const full_name = sanitize(req.body.full_name);
-    const email = sanitize(req.body.email).toLowerCase();
+    const email = normalizeSchoolEmailInput(req.body.email);
     const password = req.body.password || "";
     const confirm_password = req.body.confirm_password || "";
 
@@ -412,7 +429,7 @@ app.get("/login", (req, res) => res.render("login", { loginConfirmed: false, red
 
 app.post("/login", async (req, res) => {
   try {
-    const email = (req.body.email || "").toLowerCase().trim();
+    const email = normalizeSchoolEmailInput(req.body.email);
     const password = req.body.password || "";
     const redirectTo = sanitize(req.body.redirectTo || "");
     if (!isSchoolEmail(email)) {
@@ -455,7 +472,7 @@ app.get("/forgot-password", (req, res) => res.render("forgot_password"));
 
 app.post("/forgot-password", async (req, res) => {
   try {
-    const email = sanitize(req.body.email).toLowerCase();
+    const email = normalizeSchoolEmailInput(req.body.email);
     if (!isSchoolEmail(email)) {
       return flashRedirect(req, res, "/forgot-password", "error", `Use your school email (@${ALLOWED_EMAIL_DOMAIN}).`);
     }
@@ -938,14 +955,28 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
     if (post.finder_user_id === claimerId) {
       return flashRedirect(req, res, "/found-items", "error", "You can't claim your own found post.");
     }
-    await supabase.from("found_posts").update({ status: "claimed", claimer_user_id: claimerId }).eq("id", post.id);
+    const { error: claimError } = await supabase
+      .from("found_posts")
+      .update({ status: "claimed", claimer_user_id: claimerId })
+      .eq("id", post.id);
+    if (claimError) {
+      return flashRedirect(req, res, "/found-items", "error", "Couldn't claim that post. Please try again.");
+    }
 
     // Auto-create an opening message to kick off the thread
-    await supabase.from("found_post_messages").insert({
+    const { error: messageError } = await supabase.from("found_post_messages").insert({
       found_post_id: post.id,
       sender_user_id: claimerId,
       message: `Hi! I believe "${post.item_name}" is mine. I'd like to arrange a pickup to confirm ownership.`
     });
+    if (messageError) {
+      await supabase
+        .from("found_posts")
+        .update({ status: "unclaimed", claimer_user_id: null })
+        .eq("id", post.id)
+        .eq("claimer_user_id", claimerId);
+      return flashRedirect(req, res, "/found-items", "error", "Claim started but the conversation couldn't be created. Please try again.");
+    }
 
     setFlash(req, "success", `You claimed "${post.item_name}"! Chat with the finder below to confirm ownership and arrange pickup.`);
     return res.redirect(`/found-messages/${post.id}`);
@@ -994,7 +1025,7 @@ app.get("/found-messages/:postId", requireAuth, async (req, res) => {
     req.session.lastReadFoundPosts = { ...(req.session.lastReadFoundPosts || {}), [String(postId)]: new Date().toISOString() };
     res.render("found_thread", {
       post,
-      messages: messages.map((m) => ({ ...m, is_me: m.sender_user_id === userId, sender_name: senderMap[m.sender_user_id] || "User" })),
+      messages: messages.map((m) => serializeChatMessage({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }, userId)),
       counterpartName,
       isFinder: post.finder_user_id === userId
     });
@@ -1004,14 +1035,70 @@ app.get("/found-messages/:postId", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/found-messages/:postId/poll", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.postId);
+    const { data: post } = await supabase
+      .from("found_posts")
+      .select("id, status, finder_user_id, claimer_user_id")
+      .eq("id", postId)
+      .maybeSingle();
+    if (!post) return res.status(404).json({ error: "not_found" });
+
+    const userId = req.session.userId;
+    if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).json({ error: "forbidden" });
+
+    const { data: rows } = await supabase
+      .from("found_post_messages")
+      .select("id, sender_user_id, message, created_at")
+      .eq("found_post_id", postId)
+      .order("created_at", { ascending: true });
+    const messages = rows || [];
+
+    const senderIds = [...new Set(messages.map((m) => m.sender_user_id).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", senderIds);
+      senderMap = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
+    }
+
+    req.session.lastReadFoundPosts = { ...(req.session.lastReadFoundPosts || {}), [String(postId)]: new Date().toISOString() };
+    return res.json({
+      status: post.status,
+      messages: messages.map((m) => serializeChatMessage({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }, userId))
+    });
+  } catch (err) {
+    console.error("Found message poll error:", err);
+    return res.status(500).json({ error: "server_error" });
+  }
+});
+
 app.post("/found-messages/:postId/unclaim", requireAuth, async (req, res) => {
   try {
     const postId = Number(req.params.postId);
-    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status").eq("id", postId).maybeSingle();
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status, claimer_user_id").eq("id", postId).maybeSingle();
     if (!post) return res.status(404).render("not_found");
     if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
     if (post.status !== "claimed") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Post is not currently claimed.");
-    await supabase.from("found_posts").update({ status: "unclaimed", claimer_user_id: null }).eq("id", postId);
+
+    const { error: deleteMessagesError } = await supabase.from("found_post_messages").delete().eq("found_post_id", postId);
+    if (deleteMessagesError) {
+      return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Couldn't clear the previous claim thread. Please try again.");
+    }
+
+    const { error: unclaimError } = await supabase.from("found_posts").update({ status: "unclaimed", claimer_user_id: null }).eq("id", postId);
+    if (unclaimError) {
+      // Restore a minimal system message so the current claimer is not left with a claimed post and no thread context.
+      if (post.claimer_user_id) {
+        await supabase.from("found_post_messages").insert({
+          found_post_id: postId,
+          sender_user_id: post.claimer_user_id,
+          message: `Hi! I believe this item is mine. I'd like to arrange a pickup to confirm ownership.`
+        });
+      }
+      return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Couldn't reject the claim. Please try again.");
+    }
+
     return flashRedirect(req, res, "/found-items", "success", "Claim rejected. The post is open for others to claim.");
   } catch (err) {
     console.error("Unclaim error:", err);
@@ -1216,16 +1303,44 @@ app.get("/messages/:reportId", requireAuth, async (req, res) => {
     res.render("message_thread", {
       report,
       item,
-      messages: messages.map((m) => ({
-        ...m,
-        is_me: m.sender_user_id === currentUser.id,
-        sender_name: senderMap[m.sender_user_id] || "User"
-      })),
+      messages: messages.map((m) => serializeChatMessage({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }, currentUser.id)),
       counterpartName
     });
   } catch (err) {
     console.error("Message thread error:", err);
     return flashRedirect(req, res, "/messages", "error", "Failed to load conversation.");
+  }
+});
+
+app.get("/messages/:reportId/poll", requireAuth, async (req, res) => {
+  try {
+    const ctx = await getAccessibleReportContext(req, res, req.params.reportId);
+    if (ctx.error === "not_found") return res.status(404).json({ error: "not_found" });
+    if (ctx.error === "forbidden") return res.status(403).json({ error: "forbidden" });
+
+    const { report, currentUser } = ctx;
+    const { data: rows } = await supabase
+      .from("report_messages")
+      .select("id, sender_user_id, message, created_at")
+      .eq("report_id", report.id)
+      .order("created_at", { ascending: true });
+    const messages = rows || [];
+
+    const senderIds = [...new Set(messages.map((m) => m.sender_user_id).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", senderIds);
+      senderMap = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
+    }
+
+    req.session.lastReadReports = { ...(req.session.lastReadReports || {}), [String(report.id)]: new Date().toISOString() };
+    return res.json({
+      status: report.status,
+      messages: messages.map((m) => serializeChatMessage({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }, currentUser.id))
+    });
+  } catch (err) {
+    console.error("Message poll error:", err);
+    return res.status(500).json({ error: "server_error" });
   }
 });
 
@@ -1378,11 +1493,16 @@ app.post("/account/password/reset-link", requireAuth, async (req, res) => {
 
 // ── Change Item Status (active / lost / recovered) ──
 
-app.post("/item/:id/status", requireAuth, async (req, res) => {
-  const { item_status } = req.body;
-
-  const item = await getOwnedItem(req, req.params.id);
+async function handleItemStatusChange(req, res, itemStatusInput) {
+  const item = await getOwnedItem(req, req.params.id, "id, user_id, item_name, item_status");
   if (!item) { setFlash(req, "error", "Item not found."); return res.redirect("/dashboard"); }
+
+  const fallbackNextStatus = item.item_status === ITEM_STATUS.ACTIVE
+    ? ITEM_STATUS.LOST
+    : item.item_status === ITEM_STATUS.LOST
+      ? ITEM_STATUS.RECOVERED
+      : ITEM_STATUS.ACTIVE;
+  const item_status = itemStatusInput || fallbackNextStatus;
   if (!ITEM_STATUS_VALUES.includes(item_status)) { setFlash(req, "error", "Invalid status."); return res.redirect("/dashboard"); }
 
   await supabase.from("items").update({ item_status }).eq("id", item.id);
@@ -1393,6 +1513,14 @@ app.post("/item/:id/status", requireAuth, async (req, res) => {
   };
   setFlash(req, "success", statusMessages[item_status] || `Status updated.`);
   return res.redirect("/dashboard");
+}
+
+app.post("/item/:id/status", requireAuth, async (req, res) => {
+  return handleItemStatusChange(req, res, req.body.item_status);
+});
+
+app.get("/item/:id/status", requireAuth, async (req, res) => {
+  return handleItemStatusChange(req, res, sanitize(req.query.item_status || ""));
 });
 
 // ── Delete Found Post ──
@@ -1508,7 +1636,7 @@ app.get("/admin/users/:id", requireAdmin, async (req, res) => {
 });
 
 app.post("/admin/users/:id/ban", requireAdmin, async (req, res) => {
-  const targetId = Number(req.params.id);
+  const targetId = String(req.params.id || "");
   if (targetId === req.session.userId) return flashRedirect(req, res, "/admin", "error", "You can't ban yourself.");
   const { data: target } = await supabase.from("users").select("is_admin").eq("id", targetId).maybeSingle();
   if (target?.is_admin) return flashRedirect(req, res, "/admin", "error", "Cannot ban another admin.");
@@ -1517,7 +1645,7 @@ app.post("/admin/users/:id/ban", requireAdmin, async (req, res) => {
 });
 
 app.post("/admin/users/:id/unban", requireAdmin, async (req, res) => {
-  await supabase.from("users").update({ is_banned: false }).eq("id", Number(req.params.id));
+  await supabase.from("users").update({ is_banned: false }).eq("id", String(req.params.id || ""));
   return flashRedirect(req, res, "/admin", "success", "User unbanned.");
 });
 
@@ -1557,13 +1685,28 @@ app.get("/admin/threads/report/:id", requireAdmin, async (req, res) => {
       senderMap = Object.fromEntries((users || []).map(u => [u.id, u.full_name]));
     }
 
+    const threadMessages = [
+      {
+        id: null,
+        sender_name: report.finder_name || report.finder_email || "Finder",
+        message: report.message,
+        created_at: report.created_at,
+        can_delete: false
+      },
+      ...messages.map((m) => ({
+        ...m,
+        sender_name: senderMap[m.sender_user_id] || "User",
+        can_delete: true
+      }))
+    ];
+
     res.render("admin_thread", {
       threadType: "report",
       title: item?.item_name || "Unknown Item",
       subtitle: `Sighting report by ${report.finder_name || report.finder_email || "Unknown"}`,
       image: item?.image_url || null,
       backUrl: "/admin",
-      messages: messages.map(m => ({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }))
+      messages: threadMessages
     });
   } catch (err) {
     console.error("Admin thread (report) error:", err);

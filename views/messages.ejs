@@ -17,7 +17,7 @@
             <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
               <span class="badge <%= c.kind === 'found' ? 'badge-active' : 'badge-open' %>" style="font-size:0.68rem;opacity:0.85;"><%= c.kind === 'found' ? 'Found Board' : 'Lost Report' %></span>
               <span class="badge <%= c.status === 'open' ? 'badge-open' : c.status === 'claimed' ? 'badge-active' : 'badge-resolved' %>">
-                <%= c.status === 'open' ? 'Open' : c.status === 'claimed' ? 'Claimed' : c.status === 'returned' ? 'Returned' : 'Resolved' %>
+                <%= c.status === 'open' ? 'Open' : c.status === 'claimed' ? 'Claim Pending' : c.status === 'returned' ? 'Returned' : 'Resolved' %>
               </span>
             </div>
           </div>

@@ -114,7 +114,7 @@
                 <% if (p.location_found) { %><br><span style="font-size:0.78rem;color:#aaa;"><i data-lucide="map-pin" style="width:0.7rem;height:0.7rem;display:inline;vertical-align:middle;"></i> <%= p.location_found %></span><% } %>
               </td>
               <td style="font-size:0.85rem;color:#666;"><%= p.finder_name %></td>
-              <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status %></span></td>
+              <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status === 'claimed' ? 'claim pending' : p.status %></span></td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></td>
               <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
                 <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline">View Thread</a>
