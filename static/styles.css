@@ -583,6 +583,29 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 }
 .btn-warning:hover { box-shadow: 0 4px 16px rgba(243,156,18,0.35); }
 
+/* ===== Admin Panel ===== */
+.admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.admin-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+  color: #666;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #f0f2f5;
+  vertical-align: middle;
+}
+.admin-table tbody tr:hover { background: #f8f9fc; }
+.admin-row-banned td { opacity: 0.55; }
+
 /* ===== Search & Filters ===== */
 .search-filters { margin-bottom: 1.2rem; }
 .dashboard-top {

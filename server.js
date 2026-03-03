@@ -199,10 +199,11 @@ app.use(async (req, res, next) => {
   if (req.session.userId) {
     const { data } = await supabase
       .from("users")
-      .select("id, full_name, email")
+      .select("id, full_name, email, is_admin, is_banned")
       .eq("id", req.session.userId)
       .single();
     res.locals.currentUser = data || null;
+    res.locals.isAdmin = data?.is_admin === true;
 
     // Count unread messages using session-based last-read tracking
     const { data: userItems } = await supabase
@@ -336,6 +337,13 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// Block access if not an admin
+function requireAdmin(req, res, next) {
+  if (!req.session.userId) return res.redirect("/login");
+  if (!res.locals.isAdmin) return res.status(403).send("Forbidden");
+  next();
+}
+
 // ── Home Page ──
 
 app.get("/", (req, res) => res.render("home"));
@@ -416,6 +424,12 @@ app.post("/login", async (req, res) => {
     const { data: user } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
     if (!user) {
       setFlash(req, "error", "Invalid email or password.");
+      return res.redirect("/login");
+    }
+
+    // Block banned accounts
+    if (user.is_banned) {
+      setFlash(req, "error", "Your account has been suspended. Contact an administrator.");
       return res.redirect("/login");
     }
 
@@ -1435,6 +1449,63 @@ app.post("/item/:id/delete", requireAuth, async (req, res) => {
   await supabase.from("items").delete().eq("id", item.id);
   setFlash(req, "success", "Item deleted.");
   return res.redirect("/dashboard");
+});
+
+// ── Admin Panel ──
+
+app.get("/admin", requireAdmin, async (req, res) => {
+  try {
+    const { data: users } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").order("created_at", { ascending: false });
+    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, finder_user_id").order("created_at", { ascending: false });
+    const { data: reports } = await supabase.from("finder_reports").select("id, item_id, finder_name, finder_email, message, status, created_at").order("created_at", { ascending: false });
+
+    // Attach item names to reports
+    const itemIds = [...new Set((reports || []).map(r => r.item_id))];
+    let itemNameMap = {};
+    if (itemIds.length > 0) {
+      const { data: items } = await supabase.from("items").select("id, item_name").in("id", itemIds);
+      itemNameMap = Object.fromEntries((items || []).map(i => [i.id, i.item_name]));
+    }
+
+    res.render("admin", {
+      users: users || [],
+      foundPosts: foundPosts || [],
+      reports: (reports || []).map(r => ({ ...r, item_name: itemNameMap[r.item_id] || "Unknown" }))
+    });
+  } catch (err) {
+    console.error("Admin panel error:", err);
+    return flashRedirect(req, res, "/dashboard", "error", "Failed to load admin panel.");
+  }
+});
+
+app.post("/admin/users/:id/ban", requireAdmin, async (req, res) => {
+  const targetId = Number(req.params.id);
+  if (targetId === req.session.userId) return flashRedirect(req, res, "/admin", "error", "You can't ban yourself.");
+  const { data: target } = await supabase.from("users").select("is_admin").eq("id", targetId).maybeSingle();
+  if (target?.is_admin) return flashRedirect(req, res, "/admin", "error", "Cannot ban another admin.");
+  await supabase.from("users").update({ is_banned: true }).eq("id", targetId);
+  return flashRedirect(req, res, "/admin", "success", "User banned.");
+});
+
+app.post("/admin/users/:id/unban", requireAdmin, async (req, res) => {
+  await supabase.from("users").update({ is_banned: false }).eq("id", Number(req.params.id));
+  return flashRedirect(req, res, "/admin", "success", "User unbanned.");
+});
+
+app.post("/admin/posts/:id/delete", requireAdmin, async (req, res) => {
+  const { data: post } = await supabase.from("found_posts").select("id, image_url").eq("id", Number(req.params.id)).maybeSingle();
+  if (!post) return flashRedirect(req, res, "/admin", "error", "Post not found.");
+  if (post.image_url) {
+    const fileName = post.image_url.split("/").pop().split("?")[0];
+    await supabase.storage.from("item-images").remove([fileName]);
+  }
+  await supabase.from("found_posts").delete().eq("id", post.id);
+  return flashRedirect(req, res, "/admin", "success", "Found post deleted.");
+});
+
+app.post("/admin/reports/:id/delete", requireAdmin, async (req, res) => {
+  await supabase.from("finder_reports").delete().eq("id", Number(req.params.id));
+  return flashRedirect(req, res, "/admin", "success", "Report deleted.");
 });
 
 // ── Download QR Code as PNG ──

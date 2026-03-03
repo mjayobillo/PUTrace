@@ -60,6 +60,9 @@
                 <% } %>
               </a>
               <a href="/account" class="<%= isActive('/account') ? 'active' : '' %>">Account</a>
+              <% if (isAdmin) { %>
+                <a href="/admin" class="<%= isActive('/admin') ? 'active' : '' %>" style="color:#f59e0b;"><i data-lucide="shield" style="width:0.9rem;height:0.9rem;display:inline;vertical-align:middle;margin-right:3px;"></i>Admin</a>
+              <% } %>
             </div>
           <% } else { %>
             <div class="site-nav-group secondary">
