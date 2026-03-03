@@ -1480,7 +1480,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
 
 app.get("/admin/users/:id", requireAdmin, async (req, res) => {
   try {
-    const userId = Number(req.params.id);
+    const userId = req.params.id;
     const { data: user } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").eq("id", userId).maybeSingle();
     if (!user) return flashRedirect(req, res, "/admin", "error", "User not found.");
 
@@ -1489,17 +1489,17 @@ app.get("/admin/users/:id", requireAdmin, async (req, res) => {
     const { data: reports } = await supabase.from("finder_reports").select("id, item_id, message, status, created_at").eq("finder_email", user.email).order("created_at", { ascending: false });
 
     const itemIds = [...new Set((reports || []).map(r => r.item_id))];
-    let itemNameMap = {};
+    let itemMap = {};
     if (itemIds.length > 0) {
-      const { data: its } = await supabase.from("items").select("id, item_name").in("id", itemIds);
-      itemNameMap = Object.fromEntries((its || []).map(i => [i.id, i.item_name]));
+      const { data: its } = await supabase.from("items").select("id, item_name, image_url").in("id", itemIds);
+      itemMap = Object.fromEntries((its || []).map(i => [i.id, i]));
     }
 
     res.render("admin_user", {
       user,
       items: items || [],
       foundPosts: foundPosts || [],
-      reports: (reports || []).map(r => ({ ...r, item_name: itemNameMap[r.item_id] || "Unknown" }))
+      reports: (reports || []).map(r => ({ ...r, item_name: itemMap[r.item_id]?.item_name || "Unknown", item_image: itemMap[r.item_id]?.image_url || null }))
     });
   } catch (err) {
     console.error("Admin user detail error:", err);
