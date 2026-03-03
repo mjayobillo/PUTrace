@@ -1537,6 +1537,92 @@ app.post("/admin/reports/:id/delete", requireAdmin, async (req, res) => {
   return flashRedirect(req, res, "/admin", "success", "Report deleted.");
 });
 
+// ── Admin: View sighting report thread ──
+app.get("/admin/threads/report/:id", requireAdmin, async (req, res) => {
+  try {
+    const reportId = Number(req.params.id);
+    const { data: report } = await supabase.from("finder_reports").select("*").eq("id", reportId).maybeSingle();
+    if (!report) return res.status(404).render("not_found");
+
+    const [{ data: item }, { data: rows }] = await Promise.all([
+      supabase.from("items").select("id, item_name, image_url").eq("id", report.item_id).maybeSingle(),
+      supabase.from("report_messages").select("id, sender_user_id, message, created_at").eq("report_id", reportId).order("created_at", { ascending: true })
+    ]);
+
+    const messages = rows || [];
+    const senderIds = [...new Set(messages.map(m => m.sender_user_id).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", senderIds);
+      senderMap = Object.fromEntries((users || []).map(u => [u.id, u.full_name]));
+    }
+
+    res.render("admin_thread", {
+      threadType: "report",
+      title: item?.item_name || "Unknown Item",
+      subtitle: `Sighting report by ${report.finder_name || report.finder_email || "Unknown"}`,
+      image: item?.image_url || null,
+      backUrl: "/admin",
+      messages: messages.map(m => ({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }))
+    });
+  } catch (err) {
+    console.error("Admin thread (report) error:", err);
+    return flashRedirect(req, res, "/admin", "error", "Failed to load thread.");
+  }
+});
+
+// ── Admin: View found post thread ──
+app.get("/admin/threads/post/:id", requireAdmin, async (req, res) => {
+  try {
+    const postId = Number(req.params.id);
+    const { data: post } = await supabase.from("found_posts").select("*").eq("id", postId).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+
+    const { data: rows } = await supabase
+      .from("found_post_messages")
+      .select("id, sender_user_id, message, created_at")
+      .eq("found_post_id", postId)
+      .order("created_at", { ascending: true });
+
+    const messages = rows || [];
+    const senderIds = [...new Set(messages.map(m => m.sender_user_id).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", senderIds);
+      senderMap = Object.fromEntries((users || []).map(u => [u.id, u.full_name]));
+    }
+
+    res.render("admin_thread", {
+      threadType: "post",
+      title: post.item_name || "Unknown Item",
+      subtitle: `Found post by ${post.finder_name || "Unknown"}`,
+      image: post.image_url || null,
+      backUrl: "/admin",
+      messages: messages.map(m => ({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }))
+    });
+  } catch (err) {
+    console.error("Admin thread (post) error:", err);
+    return flashRedirect(req, res, "/admin", "error", "Failed to load thread.");
+  }
+});
+
+// ── Admin: Delete individual message ──
+app.post("/admin/messages/report/:id/delete", requireAdmin, async (req, res) => {
+  const msgId = Number(req.params.id);
+  const { data: msg } = await supabase.from("report_messages").select("report_id").eq("id", msgId).maybeSingle();
+  await supabase.from("report_messages").delete().eq("id", msgId);
+  const back = msg ? `/admin/threads/report/${msg.report_id}` : "/admin";
+  return flashRedirect(req, res, back, "success", "Message deleted.");
+});
+
+app.post("/admin/messages/post/:id/delete", requireAdmin, async (req, res) => {
+  const msgId = Number(req.params.id);
+  const { data: msg } = await supabase.from("found_post_messages").select("found_post_id").eq("id", msgId).maybeSingle();
+  await supabase.from("found_post_messages").delete().eq("id", msgId);
+  const back = msg ? `/admin/threads/post/${msg.found_post_id}` : "/admin";
+  return flashRedirect(req, res, back, "success", "Message deleted.");
+});
+
 // ── Download QR Code as PNG ──
 
 app.get("/download/:token", requireAuth, async (req, res) => {

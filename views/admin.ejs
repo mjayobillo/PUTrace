@@ -116,7 +116,8 @@
               <td style="font-size:0.85rem;color:#666;"><%= p.finder_name %></td>
               <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status %></span></td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></td>
-              <td>
+              <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+                <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline">View Thread</a>
                 <form method="post" action="/admin/posts/<%= p.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this post permanently?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
                 </form>
@@ -161,7 +162,8 @@
               <td style="font-size:0.85rem;color:#666;"><%= r.finder_name %> &lt;<%= r.finder_email %>&gt;</td>
               <td><span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status %></span></td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></td>
-              <td>
+              <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+                <a href="/admin/threads/report/<%= r.id %>" class="btn-sm btn-outline">View Thread</a>
                 <form method="post" action="/admin/reports/<%= r.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this report and its messages?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
                 </form>

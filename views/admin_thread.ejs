@@ -1,0 +1,50 @@
+<%- include('_header') %>
+
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+  <i data-lucide="shield" style="width:1.4rem;height:1.4rem;color:#3a56e4;"></i>
+  <h2 style="font-size:1.4rem;margin:0;">Admin — Message Thread</h2>
+</div>
+
+<!-- Thread header card -->
+<section class="card" style="margin-bottom:1rem;">
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <% if (image) { %>
+      <img src="<%= image %>" alt="<%= title %>" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid #e2e8f0;" />
+    <% } else { %>
+      <div style="width:60px;height:60px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:1.5rem;flex-shrink:0;">?</div>
+    <% } %>
+    <div>
+      <h3 style="margin:0 0 0.2rem;"><%= title %></h3>
+      <p class="muted" style="margin:0;font-size:0.85rem;"><%= subtitle %></p>
+    </div>
+    <a href="<%= backUrl %>" class="button btn-sm btn-outline" style="margin-left:auto;">← Back to Admin</a>
+  </div>
+</section>
+
+<!-- Messages -->
+<section class="card">
+  <% if (!messages || messages.length === 0) { %>
+    <p class="muted" style="text-align:center;padding:1.5rem 0;">No messages in this thread.</p>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      <% messages.forEach((m) => { %>
+        <div style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.75rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8f9fc;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.3rem;">
+              <strong style="font-size:0.9rem;"><%= m.sender_name %></strong>
+              <span style="font-size:0.78rem;color:#aaa;white-space:nowrap;">
+                <%= new Date(m.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %>
+              </span>
+            </div>
+            <p style="margin:0;font-size:0.9rem;color:#333;word-break:break-word;"><%= m.message %></p>
+          </div>
+          <form method="post" action="/admin/messages/<%= threadType %>/<%= m.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this message?')" style="flex-shrink:0;">
+            <button type="submit" class="btn-sm btn-danger" title="Delete message">✕</button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('_footer') %>
