@@ -56,6 +56,14 @@ function normalizeSchoolEmailInput(value) {
   return `${normalized}@${ALLOWED_EMAIL_DOMAIN}`;
 }
 
+function normalizeUsername(value) {
+  return sanitize(value).toLowerCase();
+}
+
+function isValidUsername(username) {
+  return /^[a-z0-9._]{3,30}$/.test(String(username || ""));
+}
+
 // Generate a random token for QR codes
 function generateToken() {
   return crypto.randomBytes(16).toString("hex");
@@ -68,6 +76,10 @@ function hashToken(token) {
 
 function buildResetLink(token) {
   return `${BASE_URL}/reset-password/${token}`;
+}
+
+function buildVerifyEmailLink(token) {
+  return `${BASE_URL}/verify-email/${token}`;
 }
 
 // Branded HTML wrapper for all emails
@@ -141,11 +153,38 @@ async function sendPasswordResetEmail(email, resetLink) {
      <p style="color:#888;font-size:0.87rem;">This link expires in 30 minutes. If you did not request this, you can safely ignore this email.</p>`);
 }
 
+async function sendEmailVerificationEmail(email, verifyLink, username) {
+  return sendEmail(email, "Verify Your PUTrace Email",
+    `<h2 style="margin:0 0 16px;font-size:1.2rem;">Verify Your Email</h2>
+     <p>Hi <strong>${username}</strong>,</p>
+     <p>Welcome to PUTrace. Verify your school email to activate your account.</p>
+     <p style="margin:20px 0;">
+       <a href="${verifyLink}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">Verify My Email</a>
+     </p>
+     <p style="color:#888;font-size:0.87rem;">This link expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
+     <p style="color:#888;font-size:0.87rem;">If you don't see the email in your inbox, please check your spam or junk folder.</p>`);
+}
+
 async function getValidResetTokenRecord(rawToken) {
   const tokenHash = hashToken(rawToken);
   const nowIso = new Date().toISOString();
   const { data } = await supabase
     .from("password_reset_tokens")
+    .select("id, user_id, expires_at, used_at, created_at")
+    .eq("token_hash", tokenHash)
+    .is("used_at", null)
+    .gt("expires_at", nowIso)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data || null;
+}
+
+async function getValidEmailVerificationTokenRecord(rawToken) {
+  const tokenHash = hashToken(rawToken);
+  const nowIso = new Date().toISOString();
+  const { data } = await supabase
+    .from("email_verification_tokens")
     .select("id, user_id, expires_at, used_at, created_at")
     .eq("token_hash", tokenHash)
     .is("used_at", null)
@@ -179,6 +218,18 @@ async function uploadImage(fileBuffer, prefix) {
   return data.publicUrl;
 }
 
+async function createEmailVerificationToken(userId) {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  await supabase.from("email_verification_tokens").insert({
+    user_id: userId,
+    token_hash: tokenHash,
+    expires_at: expiresAt
+  });
+  return rawToken;
+}
+
 // ── Express Config ──
 
 app.set("view engine", "ejs");
@@ -206,7 +257,7 @@ app.use(async (req, res, next) => {
   if (req.session.userId) {
     const { data } = await supabase
       .from("users")
-      .select("id, full_name, email, is_admin, is_banned")
+      .select("id, full_name, username, email, email_verified, is_admin, is_banned")
       .eq("id", req.session.userId)
       .single();
     res.locals.currentUser = data || null;
@@ -372,6 +423,7 @@ app.get("/signup", (req, res) => res.render("signup"));
 app.post("/signup", async (req, res) => {
   try {
     const full_name = sanitize(req.body.full_name);
+    const username = normalizeUsername(req.body.username);
     const email = normalizeSchoolEmailInput(req.body.email);
     const password = req.body.password || "";
     const confirm_password = req.body.confirm_password || "";
@@ -379,6 +431,10 @@ app.post("/signup", async (req, res) => {
     // Validate inputs
     if (full_name.length < 2 || full_name.length > 100) {
       setFlash(req, "error", "Full name must be 2–100 characters.");
+      return res.redirect("/signup");
+    }
+    if (!isValidUsername(username)) {
+      setFlash(req, "error", "Username must be 3–30 characters using lowercase letters, numbers, dots, or underscores.");
       return res.redirect("/signup");
     }
     if (!isValidEmail(email)) {
@@ -399,22 +455,36 @@ app.post("/signup", async (req, res) => {
     }
 
     // Check if email already exists
-    const { data: exists } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
-    if (exists) {
+    const [{ data: emailExists }, { data: usernameExists }] = await Promise.all([
+      supabase.from("users").select("id").eq("email", email).maybeSingle(),
+      supabase.from("users").select("id").eq("username", username).maybeSingle()
+    ]);
+    if (emailExists) {
       setFlash(req, "error", "That email is already registered. Try logging in instead.");
+      return res.redirect("/signup");
+    }
+    if (usernameExists) {
+      setFlash(req, "error", "That username is already taken.");
       return res.redirect("/signup");
     }
 
     // Hash password and create account
     const password_hash = await bcrypt.hash(password, 10);
-    const { error } = await supabase.from("users").insert({ full_name, email, password_hash });
+    const { data: createdUser, error } = await supabase
+      .from("users")
+      .insert({ full_name, username, email, password_hash, email_verified: false })
+      .select("id")
+      .maybeSingle();
 
-    if (error) {
+    if (error || !createdUser) {
       setFlash(req, "error", "Signup didn't go through. Please try again.");
       return res.redirect("/signup");
     }
 
-    setFlash(req, "success", "Account created! Welcome to PUTrace — please log in.");
+    const rawToken = await createEmailVerificationToken(createdUser.id);
+    await sendEmailVerificationEmail(email, buildVerifyEmailLink(rawToken), username);
+
+    setFlash(req, "success", "Account created. Verify your email before logging in. Check your spam or junk folder if needed.");
     return res.redirect("/login");
   } catch (err) {
     console.error("Signup error:", err);
@@ -429,18 +499,21 @@ app.get("/login", (req, res) => res.render("login", { loginConfirmed: false, red
 
 app.post("/login", async (req, res) => {
   try {
-    const email = normalizeSchoolEmailInput(req.body.email);
+    const identifierRaw = sanitize(req.body.identifier || req.body.email);
+    const identifier = normalizeUsername(identifierRaw);
     const password = req.body.password || "";
     const redirectTo = sanitize(req.body.redirectTo || "");
-    if (!isSchoolEmail(email)) {
-      setFlash(req, "error", `Use your school email (@${ALLOWED_EMAIL_DOMAIN}).`);
+    if (!identifier) {
+      setFlash(req, "error", "Enter your username or school email.");
       return res.redirect("/login");
     }
 
-    // Find user by email
-    const { data: user } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
+    const lookupQuery = identifierRaw.includes("@")
+      ? supabase.from("users").select("*").eq("email", normalizeSchoolEmailInput(identifierRaw))
+      : supabase.from("users").select("*").eq("username", identifier);
+    const { data: user } = await lookupQuery.maybeSingle();
     if (!user) {
-      setFlash(req, "error", "Invalid email or password.");
+      setFlash(req, "error", "Invalid username/email or password.");
       return res.redirect("/login");
     }
 
@@ -449,11 +522,15 @@ app.post("/login", async (req, res) => {
       setFlash(req, "error", "Your account has been suspended. Contact an administrator.");
       return res.redirect("/login");
     }
+    if (!user.email_verified) {
+      setFlash(req, "error", "Verify your email before logging in. Check your inbox or spam folder.");
+      return res.redirect("/login");
+    }
 
     // Check password
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
-      setFlash(req, "error", "Invalid email or password.");
+      setFlash(req, "error", "Invalid username/email or password.");
       return res.redirect("/login");
     }
 
@@ -465,6 +542,21 @@ app.post("/login", async (req, res) => {
     console.error("Login error:", err);
     setFlash(req, "error", "Something went wrong.");
     return res.redirect("/login");
+  }
+});
+
+app.get("/verify-email/:token", async (req, res) => {
+  try {
+    const record = await getValidEmailVerificationTokenRecord(req.params.token);
+    if (!record) return flashRedirect(req, res, "/login", "error", "This verification link is invalid or expired.");
+
+    await supabase.from("users").update({ email_verified: true }).eq("id", record.user_id);
+    await supabase.from("email_verification_tokens").update({ used_at: new Date().toISOString() }).eq("id", record.id);
+
+    return flashRedirect(req, res, "/login", "success", "Email verified. You can now sign in.");
+  } catch (err) {
+    console.error("Email verification error:", err);
+    return flashRedirect(req, res, "/login", "error", "Something went wrong.");
   }
 });
 

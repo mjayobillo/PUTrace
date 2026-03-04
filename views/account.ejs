@@ -5,7 +5,7 @@
     <div class="account-avatar"><%= currentUser.full_name.charAt(0).toUpperCase() %></div>
     <div>
       <h2 style="margin-bottom:0.2rem;"><%= currentUser.full_name %></h2>
-      <p style="color:#888;font-size:0.9rem;"><%= currentUser.email %></p>
+      <p style="color:#888;font-size:0.9rem;"><%= currentUser.username ? '@' + currentUser.username + ' · ' : '' %><%= currentUser.email %></p>
     </div>
   </div>
 
@@ -17,8 +17,16 @@
         <span class="info-value"><%= currentUser.full_name %></span>
       </div>
       <div class="info-row">
+        <span class="info-label">Username</span>
+        <span class="info-value"><%= currentUser.username ? '@' + currentUser.username : 'Not set' %></span>
+      </div>
+      <div class="info-row">
         <span class="info-label">Email</span>
         <span class="info-value"><%= currentUser.email %></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Email Status</span>
+        <span class="info-value"><%= currentUser.email_verified ? 'Verified' : 'Pending verification' %></span>
       </div>
       <div class="info-row">
         <span class="info-label">Member Since</span>

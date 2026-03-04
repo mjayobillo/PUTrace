@@ -15,10 +15,9 @@
   </div>
   <form method="post" action="/login">
     <input type="hidden" name="redirectTo" value="<%= (typeof redirectTo !== 'undefined' && redirectTo) ? redirectTo : '' %>" />
-    <label>School email
+    <label>Username or school email
       <div style="display:flex;align-items:center;border:1px solid #d9e0ea;border-radius:10px;overflow:hidden;background:#fff;">
-        <input type="text" name="email" required placeholder="name" autocapitalize="none" autocomplete="username" spellcheck="false" style="border:0;border-radius:0;box-shadow:none;flex:1;" />
-        <span style="padding:0 0.9rem;color:#667085;background:#f8f9fc;border-left:1px solid #e5e7eb;white-space:nowrap;">@panpacificu.edu.ph</span>
+        <input type="text" name="identifier" required placeholder="username or name@panpacificu.edu.ph" autocapitalize="none" autocomplete="username" spellcheck="false" style="border:0;border-radius:0;box-shadow:none;flex:1;" />
       </div>
     </label>
     <label>Password
