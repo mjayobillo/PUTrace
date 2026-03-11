@@ -136,7 +136,15 @@
             </form>
           </div>
         <% } else if (currentUser) { %>
-          <button type="button" class="btn-sm btn-success btn-block" onclick="showClaimModal('<%= post.item_name.replace(/'/g, "\\'") %>', '<%= post.finder_name %>', '<%= (post.location_found || '').replace(/'/g, "\\'") %>', <%= post.id %>)">This is mine &mdash; Claim it</button>
+          <button type="button"
+                  class="btn-sm btn-success btn-block"
+                  data-item-name="<%= post.item_name %>"
+                  data-finder-name="<%= post.finder_name %>"
+                  data-location="<%= post.location_found || '' %>"
+                  data-post-id="<%= post.id %>"
+                  onclick="showClaimModal(this.dataset.itemName, this.dataset.finderName, this.dataset.location, this.dataset.postId)">
+            This is mine &mdash; Claim it
+          </button>
         <% } else { %>
           <p class="text-muted-sm center-text" style="margin-top:0.8rem;">
             <a href="/login">Login</a> to claim this item

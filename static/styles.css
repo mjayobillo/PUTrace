@@ -651,7 +651,8 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 .item .qr-wrap { text-align: center; margin: 0.8rem 0; }
 .item .qr-wrap img { border-radius: 8px; border: 2px solid #f0f2f5; }
 .item .item-meta { font-size: 0.78rem; color: #999; margin-top: auto; }
-.item .item-actions { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+.item .item-actions { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; align-items: center; }
+.item .item-actions .btn-danger { margin-left: auto; }
 .badge {
   display: inline-flex;
   align-items: center;
