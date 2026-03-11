@@ -25,9 +25,9 @@
   </div>
 
   <% if (report.status === 'resolved') { %>
-    <p class="muted" id="report-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This report has been resolved. The conversation is now closed.</p>
+    <p class="muted" id="report-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">This report has been resolved. The conversation is now closed.</p>
   <% } else { %>
-  <p class="muted" id="report-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This report has been resolved. The conversation is now closed.</p>
+  <p class="muted" id="report-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">This report has been resolved. The conversation is now closed.</p>
   <form method="post" action="/messages/<%= report.id %>" id="report-message-form">
     <label>Message
       <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>

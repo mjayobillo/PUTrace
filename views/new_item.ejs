@@ -5,7 +5,7 @@
     <h2 class="section-title">Register New Item</h2>
     <a href="/dashboard" class="button btn-sm btn-outline">Back to Dashboard</a>
   </div>
-  <p class="register-item-intro">Add your item details below. We’ll generate a QR code you can save and attach so anyone who finds it can contact you quickly.</p>
+  <p class="register-item-intro">Add the details. We’ll generate a QR for you.</p>
 
   <form method="post" action="/items/new" enctype="multipart/form-data" class="dashboard-form">
     <label>Item name
@@ -25,7 +25,7 @@
     </label>
 
     <label>Photo <small class="field-note">(optional, max 5 MB)</small>
-      <span class="register-item-photo-note">Optional, but helpful for easier identification.</span>
+      <span class="register-item-photo-note">Helps identify the item faster.</span>
       <input type="file" name="image" accept="image/*" class="file-input-tight" id="register-item-image-input" />
     </label>
     <div id="register-item-preview" class="register-item-preview" style="display:none;">
@@ -39,7 +39,7 @@
       </div>
     </div>
 
-    <p class="register-item-outcome">After submitting, your QR code will be available from the dashboard.</p>
+    <p class="register-item-outcome">Your QR will appear on the dashboard.</p>
 
     <button type="submit">Register Item &amp; Generate QR</button>
   </form>

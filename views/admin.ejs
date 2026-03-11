@@ -20,6 +20,10 @@
     <div class="stat-label">Found Posts</div>
   </div>
   <div class="stat-card">
+    <div class="stat-number"><%= lostItems.length %></div>
+    <div class="stat-label">Lost Items</div>
+  </div>
+  <div class="stat-card">
     <div class="stat-number"><%= reports.length %></div>
     <div class="stat-label">Reports</div>
   </div>
@@ -47,7 +51,10 @@
             <tr class="<%= u.is_banned ? 'admin-row-banned' : '' %>">
               <td><a href="/admin/users/<%= u.id %>" style="font-weight:600;color:#3a56e4;"><%= u.full_name %></a></td>
               <td style="font-size:0.85rem;color:#666;"><%= u.email %></td>
-              <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(u.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' }) %></td>
+              <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
+                <%= new Date(u.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' }) %>,
+                <%= new Date(u.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
+              </td>
               <td>
                 <% if (u.is_admin) { %>
                   <span class="badge badge-active">Admin</span>
@@ -80,6 +87,53 @@
   <% } %>
 </section>
 
+<!-- Lost Items -->
+<section class="card">
+  <h3 style="margin-bottom:1rem;"><i data-lucide="search" class="inline-icon"></i> Lost Board Items</h3>
+  <% if (lostItems.length === 0) { %>
+    <p class="muted">No lost items right now.</p>
+  <% } else { %>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Photo</th>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Owner</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% lostItems.forEach((item) => { %>
+            <tr>
+              <td style="width:56px;">
+                <% if (item.image_url) { %>
+                  <img src="<%= item.image_url %>" alt="<%= item.item_name %>" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" data-img="<%= item.image_url %>" data-label="<%= item.item_name %>" onclick="showAdminImg(this.dataset.img, this.dataset.label)" />
+                <% } else { %>
+                  <div style="width:48px;height:48px;background:#f0f2f5;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:1.2rem;">?</div>
+                <% } %>
+              </td>
+              <td>
+                <strong><%= item.item_name %></strong>
+                <% if (item.item_description) { %><br><span style="font-size:0.8rem;color:#888;"><%= item.item_description.substring(0,60) %><%= item.item_description.length > 60 ? '…' : '' %></span><% } %>
+              </td>
+              <td style="font-size:0.85rem;color:#666;"><%= item.category || 'Other' %></td>
+              <td style="font-size:0.85rem;color:#666;">
+                <a href="/admin/users/<%= item.user_id %>" style="color:#3a56e4;font-weight:600;"><%= item.owner_name %></a>
+              </td>
+              <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
+                <%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
+                <%= new Date(item.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
 <!-- Found Posts -->
 <section class="card">
   <h3 style="margin-bottom:1rem;"><i data-lucide="package-open" class="inline-icon"></i> Found Board Posts</h3>
@@ -94,6 +148,7 @@
             <th>Item</th>
             <th>Posted by</th>
             <th>Status</th>
+            <th>Type</th>
             <th>Date</th>
             <th>Action</th>
           </tr>
@@ -115,7 +170,10 @@
               </td>
               <td style="font-size:0.85rem;color:#666;"><%= p.finder_name %></td>
               <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status === 'claimed' ? 'claim pending' : p.status %></span></td>
-              <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></td>
+              <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
+                <%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
+                <%= new Date(p.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
+              </td>
               <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
                 <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline">View Thread</a>
                 <form method="post" action="/admin/posts/<%= p.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this post permanently?')">
@@ -161,7 +219,14 @@
               <td><strong><%= r.item_name %></strong></td>
               <td style="font-size:0.85rem;color:#666;"><%= r.finder_name %> &lt;<%= r.finder_email %>&gt;</td>
               <td><span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status %></span></td>
-              <td style="font-size:0.82rem;color:#888;white-space:nowrap;"><%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></td>
+              <td>
+                <% const isSighting = String(r.message || '').startsWith('[Sighting]'); %>
+                <span class="badge badge-none"><%= isSighting ? 'Lost sighting' : 'QR scan' %></span>
+              </td>
+              <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
+                <%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
+                <%= new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
+              </td>
               <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
                 <a href="/admin/threads/report/<%= r.id %>" class="btn-sm btn-outline">View Thread</a>
                 <form method="post" action="/admin/reports/<%= r.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this report and its messages?')">

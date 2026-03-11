@@ -12,6 +12,7 @@
     <div style="flex:1;">
       <div style="font-size:1.15rem;font-weight:700;"><%= user.full_name %></div>
       <div style="color:#888;font-size:0.88rem;"><%= user.email %></div>
+      <div style="color:#9aa1b2;font-size:0.85rem;margin-top:0.1rem;">@<%= user.username %></div>
       <div style="margin-top:0.4rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
         <% if (user.is_admin) { %>
           <span class="badge badge-active">Admin</span>
@@ -106,6 +107,8 @@
               <strong><%= r.item_name %></strong>
               <div style="display:flex;gap:0.4rem;align-items:center;">
                 <span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status %></span>
+                <% const isSighting = String(r.message || '').startsWith('[Sighting]'); %>
+                <span class="badge badge-none"><%= isSighting ? 'Lost sighting' : 'QR scan' %></span>
                 <span style="font-size:0.82rem;color:#aaa;"><%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></span>
               </div>
             </div>

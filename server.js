@@ -1695,6 +1695,11 @@ app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const { data: users } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").order("created_at", { ascending: false });
     const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, finder_user_id, image_url, item_description, location_found").order("created_at", { ascending: false });
+    const { data: lostItems } = await supabase
+      .from("items")
+      .select("id, item_name, item_description, category, image_url, created_at, user_id")
+      .eq("item_status", "lost")
+      .order("created_at", { ascending: false });
     const { data: reports } = await supabase.from("finder_reports").select("id, item_id, finder_name, finder_email, message, status, created_at").order("created_at", { ascending: false });
 
     // Attach item names + images to reports
@@ -1705,9 +1710,17 @@ app.get("/admin", requireAdmin, async (req, res) => {
       itemMap = Object.fromEntries((items || []).map(i => [i.id, i]));
     }
 
+    const ownerIds = [...new Set((lostItems || []).map((i) => i.user_id).filter(Boolean))];
+    let ownersById = {};
+    if (ownerIds.length > 0) {
+      const { data: owners } = await supabase.from("users").select("id, full_name").in("id", ownerIds);
+      ownersById = Object.fromEntries((owners || []).map((u) => [u.id, u.full_name]));
+    }
+
     res.render("admin", {
       users: users || [],
       foundPosts: foundPosts || [],
+      lostItems: (lostItems || []).map((i) => ({ ...i, owner_name: ownersById[i.user_id] || "Unknown" })),
       reports: (reports || []).map(r => ({ ...r, item_name: itemMap[r.item_id]?.item_name || "Unknown", item_image: itemMap[r.item_id]?.image_url || null }))
     });
   } catch (err) {
@@ -1719,7 +1732,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
 app.get("/admin/users/:id", requireAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
-    const { data: user } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").eq("id", userId).maybeSingle();
+    const { data: user } = await supabase.from("users").select("id, full_name, username, email, is_admin, is_banned, created_at").eq("id", userId).maybeSingle();
     if (!user) return flashRedirect(req, res, "/admin", "error", "User not found.");
 
     const { data: items } = await supabase.from("items").select("id, item_name, item_status, category, image_url, created_at").eq("user_id", userId).order("created_at", { ascending: false });

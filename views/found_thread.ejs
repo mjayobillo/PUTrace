@@ -10,7 +10,7 @@
   <% if (isFinder && post.status === 'claimed' && post.claimer_user_id !== post.finder_user_id) { %>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
       <form method="post" action="/found-messages/<%= post.id %>/resolve">
-        <button type="submit" class="button btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;">&#10003; Mark as Returned</button>
+        <button type="submit" class="button btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;">Mark as Returned</button>
       </form>
       <form method="post" action="/found-messages/<%= post.id %>/unclaim" onsubmit="return confirm('Reject this claim? The post will become claimable again.')">
         <button type="submit" class="button btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">Reject Claim</button>
@@ -35,9 +35,9 @@
   </div>
 
   <% if (post.status === 'returned') { %>
-    <p class="muted" id="found-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This item has been returned. The conversation is now closed.</p>
+    <p class="muted" id="found-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">This item has been returned. The conversation is now closed.</p>
   <% } else { %>
-  <p class="muted" id="found-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">&#10003; This item has been returned. The conversation is now closed.</p>
+  <p class="muted" id="found-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">This item has been returned. The conversation is now closed.</p>
   <form method="post" action="/found-messages/<%= post.id %>" id="found-message-form">
     <label>Message
       <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
