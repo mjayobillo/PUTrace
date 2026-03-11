@@ -1,8 +1,8 @@
 <%- include('_header') %>
 
-<div style="text-align:center;margin-bottom:1.5rem;">
-  <h2 style="font-size:1.8rem;"><i data-lucide="search" class="inline-icon"></i> Lost Items Board</h2>
-  <p style="color:#888;max-width:500px;margin:0.5rem auto 0;">Browse items reported lost by PUTrace users. Seen one of these? Let the owner know!</p>
+<div class="board-intro">
+  <h2 class="page-title"><i data-lucide="search" class="inline-icon"></i> Lost Items Board</h2>
+  <p>Browse items reported lost by PUTrace users. Seen one of these? Let the owner know!</p>
 </div>
 
 <section class="card">
@@ -30,18 +30,18 @@
 </section>
 
 <% if (!items || items.length === 0) { %>
-  <section class="card center-text" style="padding:3rem;">
-    <div style="font-size:3rem;margin-bottom:0.5rem;">✅</div>
+  <section class="card empty-card">
+    <div class="empty-icon">✅</div>
     <% if (search || filterCategory) { %>
       <h3>No items match your search</h3>
-      <p style="color:#888;">Try different keywords or <a href="/lost">clear filters</a></p>
+      <p class="text-muted">Try different keywords or <a href="/lost">clear filters</a></p>
     <% } else { %>
       <h3>No items reported lost right now</h3>
-      <p style="color:#888;">That's great news! Check back later if you're looking for something.</p>
+      <p class="text-muted">That's great news! Check back later if you're looking for something.</p>
     <% } %>
   </section>
 <% } else { %>
-  <p style="color:#888;margin-bottom:1rem;font-size:0.9rem;"><%= items.length %> item<%= items.length > 1 ? 's' : '' %> reported lost</p>
+  <p class="text-muted" style="margin-bottom:1rem;"><%= items.length %> item<%= items.length > 1 ? 's' : '' %> reported lost</p>
 
   <div class="lost-board-grid">
     <% items.forEach((item) => { %>
@@ -58,12 +58,12 @@
           </div>
           <% if (item.image_url) { %>
             <div class="item-image-wrap">
-              <img src="<%= item.image_url %>" alt="<%= item.item_name %>" class="item-image" style="cursor:pointer;" data-img="<%= item.image_url %>" data-label="<%= item.item_name %>" onclick="showBoardImg(this.dataset.img, this.dataset.label)" />
+              <img src="<%= item.image_url %>" alt="<%= item.item_name %>" class="item-image img-clickable" data-img="<%= item.image_url %>" data-label="<%= item.item_name %>" onclick="showBoardImg(this.dataset.img, this.dataset.label)" />
             </div>
           <% } else { %>
             <div class="item-image-wrap item-image-placeholder">
               <div class="item-image-placeholder-inner">
-                <i data-lucide="image-off" style="width:2rem;height:2rem;color:#3a56e4;"></i>
+                <i data-lucide="image-off" class="icon-brand" style="width:2rem;height:2rem;"></i>
                 <strong>No photo provided</strong>
                 <span>Use the description and category to identify the item.</span>
               </div>

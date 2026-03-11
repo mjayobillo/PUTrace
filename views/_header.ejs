@@ -15,6 +15,9 @@
       %>
       <title><%= _docTitle %></title>
       <link rel="icon" type="image/png" href="/putrace_icon_fixed.png" />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
       <link rel="stylesheet" href="/styles.css" />
       <script src="https://unpkg.com/lucide@latest"></script>
     </head>
@@ -60,7 +63,12 @@
                 <% } %>
               </a>
               <a href="/account" class="<%= isActive('/account') ? 'active' : '' %>">Account</a>
-              <a href="/logout" class="<%= isActive('/logout') ? 'active' : '' %>">Sign Out</a>
+              <a href="/logout"
+                 class="nav-logout <%= isActive('/logout') ? 'active' : '' %>"
+                 data-confirm-modal="true"
+                 data-confirm-title="Sign out?"
+                 data-confirm-message="Are you sure you want to sign out?"
+                 data-confirm-action="signout">Sign Out</a>
               <% if (isAdmin) { %>
                 <a href="/admin" class="<%= isActive('/admin') ? 'active' : '' %>" style="color:#f59e0b;"><i data-lucide="shield" style="width:0.9rem;height:0.9rem;display:inline;vertical-align:middle;margin-right:3px;"></i>Admin</a>
               <% } %>
@@ -80,7 +88,7 @@
             <div id="success-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-title">
               <div class="modal-box">
                 <button type="button" class="modal-close" id="success-modal-close" aria-label="Close confirmation">&times;</button>
-                <div style="text-align:center;margin-bottom:0.8rem;"><i data-lucide="check-circle" style="width:2.2rem;height:2.2rem;color:#22c55e;"></i></div>
+                <div class="modal-icon-wrap"><i data-lucide="check-circle" class="modal-icon-success"></i></div>
                 <h3 id="success-title" class="success-title">Done!</h3>
                 <p class="success-message"><%= flash.message %></p>
                 <div class="success-actions">
@@ -92,7 +100,7 @@
             <div id="error-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="error-title">
               <div class="modal-box modal-box-error">
                 <button type="button" class="modal-close" id="error-modal-close" aria-label="Close notification">&times;</button>
-                <div style="text-align:center;margin-bottom:0.8rem;"><i data-lucide="alert-circle" style="width:2.2rem;height:2.2rem;color:#e74c3c;"></i></div>
+                <div class="modal-icon-wrap"><i data-lucide="alert-circle" class="modal-icon-error"></i></div>
                 <h3 id="error-title" class="error-title">Oops!</h3>
                 <p class="error-message"><%= flash.message %></p>
                 <div class="success-actions">

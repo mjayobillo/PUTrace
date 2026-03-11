@@ -1,4 +1,6 @@
     </main>
+    <%- include('_delete_confirm_modal') %>
+    <%- include('_confirm_modal') %>
     <footer class="site-footer">
       <p>&copy; 2026 PUTrace &mdash; Campus Item Recovery System</p>
       <p>Built with Node.js &amp; Supabase</p>
@@ -134,6 +136,98 @@
             toggle.setAttribute('aria-expanded', 'false');
             toggle.setAttribute('aria-label', 'Open navigation menu');
           });
+        });
+      })();
+
+      // Delete confirm modal (shared across dashboard, found-items, etc.)
+      (function () {
+        var modal = document.getElementById('delete-confirm-modal');
+        var titleEl = document.getElementById('delete-confirm-title');
+        var messageEl = document.getElementById('delete-confirm-message');
+        var closeBtn = document.getElementById('delete-confirm-close');
+        var cancelBtn = document.getElementById('delete-confirm-cancel');
+        var submitBtn = document.getElementById('delete-confirm-submit');
+        var pendingForm = null;
+        if (!modal || !titleEl || !messageEl || !submitBtn) return;
+        function closeDeleteModal() {
+          modal.style.display = 'none';
+          pendingForm = null;
+        }
+        document.querySelectorAll('.delete-confirm-form').forEach(function (form) {
+          form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            pendingForm = form;
+            var label = form.dataset.deleteLabel || 'this item';
+            var message = form.dataset.deleteMessage || 'Delete this item?';
+            var action = (form.dataset.deleteAction || 'delete').toLowerCase();
+            var prefix = action === 'remove' ? 'Remove' : 'Delete';
+            var submitText = action === 'remove' ? 'Remove' : 'Delete';
+            titleEl.textContent = prefix + ' "' + label + '"?';
+            messageEl.textContent = message;
+            submitBtn.textContent = submitText;
+            modal.style.display = 'flex';
+            submitBtn.focus();
+          });
+        });
+        submitBtn.addEventListener('click', function () {
+          if (!pendingForm) return;
+          modal.style.display = 'none';
+          pendingForm.submit();
+        });
+        if (closeBtn) closeBtn.addEventListener('click', closeDeleteModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeDeleteModal);
+        modal.addEventListener('click', function (event) {
+          if (event.target === modal) closeDeleteModal();
+        });
+        document.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape') closeDeleteModal();
+        });
+      })();
+
+      // Generic confirm modal for links/buttons
+      (function () {
+        var modal = document.getElementById('confirm-modal');
+        var titleEl = document.getElementById('confirm-title');
+        var messageEl = document.getElementById('confirm-message');
+        var closeBtn = document.getElementById('confirm-close');
+        var cancelBtn = document.getElementById('confirm-cancel');
+        var submitBtn = document.getElementById('confirm-submit');
+        var pendingLink = null;
+        if (!modal || !titleEl || !messageEl || !submitBtn) return;
+
+        function closeConfirmModal() {
+          modal.style.display = 'none';
+          pendingLink = null;
+        }
+
+        document.querySelectorAll('[data-confirm-modal]').forEach(function (el) {
+          el.addEventListener('click', function (event) {
+            event.preventDefault();
+            pendingLink = el;
+            var title = el.getAttribute('data-confirm-title') || 'Are you sure?';
+            var message = el.getAttribute('data-confirm-message') || 'Please confirm this action.';
+            var action = (el.getAttribute('data-confirm-action') || 'confirm').toLowerCase();
+            var confirmText = action === 'signout' ? 'Sign out' : 'Confirm';
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            submitBtn.textContent = confirmText;
+            modal.style.display = 'flex';
+            submitBtn.focus();
+          });
+        });
+
+        submitBtn.addEventListener('click', function () {
+          if (!pendingLink) return;
+          modal.style.display = 'none';
+          window.location.href = pendingLink.getAttribute('href');
+        });
+        if (closeBtn) closeBtn.addEventListener('click', closeConfirmModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeConfirmModal);
+        modal.addEventListener('click', function (event) {
+          if (event.target === modal) closeConfirmModal();
+        });
+        document.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape') closeConfirmModal();
         });
       })();
 
