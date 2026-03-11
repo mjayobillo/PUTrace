@@ -262,6 +262,10 @@ app.use(async (req, res, next) => {
       .single();
     res.locals.currentUser = data || null;
     res.locals.isAdmin = data?.is_admin === true;
+    if (!data) {
+      req.session.userId = null;
+      res.locals.isAdmin = false;
+    }
 
     // Count unread messages using session-based last-read tracking
     const { data: userItems } = await supabase
@@ -1507,6 +1511,10 @@ app.post("/report/:id/resolve", requireAuth, async (req, res) => {
 
 app.get("/account", requireAuth, async (req, res) => {
   try {
+    if (!res.locals.currentUser) {
+      setFlash(req, "error", "Please log in again.");
+      return res.redirect("/login");
+    }
     // Get user info and item stats for the account page
     const { data: user } = await supabase.from("users").select("created_at").eq("id", req.session.userId).single();
     const { data: items } = await supabase.from("items").select("id").eq("user_id", req.session.userId);
@@ -1895,10 +1903,11 @@ app.get("/download/:token", requireAuth, async (req, res) => {
   const { data: item } = await supabase.from("items").select("*").eq("token", req.params.token).eq("user_id", req.session.userId).maybeSingle();
   if (!item) return res.status(404).render("not_found");
 
-  const base64 = (item.qr_data_url || "").split(",")[1];
-  if (!base64) return res.status(500).send("QR unavailable");
-
-  const imgBuffer = Buffer.from(base64, "base64");
+  const qrUrl = `${BASE_URL}/found/${item.token}`;
+  const imgBuffer = await QRCode.toBuffer(qrUrl, {
+    width: 800,
+    margin: 1
+  });
   res.setHeader("Content-Type", "image/png");
   res.setHeader("Content-Disposition", `attachment; filename="${safeFileName(item.item_name)}-qr.png"`);
   res.send(imgBuffer);

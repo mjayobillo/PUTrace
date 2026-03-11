@@ -4,6 +4,7 @@ PUTrace is a QR-based campus lost-and-found web app. Students register valuables
 
 ## Features
 - Student signup/login (restricted to `@panpacificu.edu.ph`)
+- All actions require a logged-in account (including QR reports and boards)
 - Register items with optional photo + auto-generated QR code
 - Lost Board sightings and Found Items claims
 - Owner–finder messaging threads
