@@ -1070,6 +1070,24 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
       return flashRedirect(req, res, "/found-items", "error", "Claim started but the conversation couldn't be created. Please try again.");
     }
 
+    // Email the finder (post owner) that someone claimed their found item
+    try {
+      const { data: claimer } = await supabase.from("users").select("full_name, email").eq("id", claimerId).single();
+      if (post.finder_email) {
+        await sendEmail(post.finder_email, `Your found item post was claimed — ${post.item_name}`,
+          `<h2 style="margin:0 0 16px;font-size:1.2rem;">&#128197; Item Claimed</h2>
+           <p>Hi <strong>${post.finder_name || 'there'}</strong>,</p>
+           <p><strong>${claimer?.full_name || 'Someone'}</strong> (${claimer?.email || 'unknown email'}) claimed your found item post for <strong>${post.item_name}</strong>.</p>
+           <p>You can chat with them inside PUTrace to confirm ownership and arrange pickup.</p>
+           <p style="margin-top:20px;">
+             <a href="${BASE_URL}/found-messages/${post.id}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">Open Conversation</a>
+           </p>`
+        );
+      }
+    } catch (emailErr) {
+      console.error("Claim notification email failed:", emailErr);
+    }
+
     setFlash(req, "success", `You claimed "${post.item_name}"! Chat with the finder below to confirm ownership and arrange pickup.`);
     return res.redirect(`/found-messages/${post.id}`);
   } catch (err) {
