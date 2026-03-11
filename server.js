@@ -484,7 +484,7 @@ app.post("/signup", async (req, res) => {
     const rawToken = await createEmailVerificationToken(createdUser.id);
     await sendEmailVerificationEmail(email, buildVerifyEmailLink(rawToken), username);
 
-    setFlash(req, "success", "Account created. Verify your email before logging in. Check your spam or junk folder if needed.");
+    setFlash(req, "success", "Account created. Verify your email before logging in. Check your spam/junk folder if you don’t see it.");
     return res.redirect("/login");
   } catch (err) {
     console.error("Signup error:", err);
@@ -588,7 +588,7 @@ app.post("/forgot-password", async (req, res) => {
     // Clean up expired/used tokens in the background
     supabase.from("password_reset_tokens").delete().lt("expires_at", new Date().toISOString()).then(() => {}).catch(() => {});
 
-    return flashRedirect(req, res, "/login", "success", "If your account exists, a password reset link has been sent.");
+    return flashRedirect(req, res, "/login", "success", "If your account exists, a password reset link has been sent. Check your spam/junk folder.");
   } catch (err) {
     console.error("Forgot password error:", err);
     return flashRedirect(req, res, "/forgot-password", "error", "Something went wrong.");
@@ -1594,7 +1594,7 @@ app.post("/account/password/reset-link", requireAuth, async (req, res) => {
     });
 
     await sendPasswordResetEmail(email, buildResetLink(rawToken));
-    return flashRedirect(req, res, "/account", "success", "Password reset link sent to your email.");
+    return flashRedirect(req, res, "/account", "success", "Password reset link sent to your email. Check spam/junk if you don’t see it.");
   } catch (err) {
     console.error("Account reset link error:", err);
     return flashRedirect(req, res, "/account", "error", "Something went wrong.");
