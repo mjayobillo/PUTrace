@@ -148,7 +148,7 @@
             <th>Item</th>
             <th>Posted by</th>
             <th>Status</th>
-            <th>Type</th>
+            <th class="type-col">Type</th>
             <th>Date</th>
             <th class="admin-action-col">Action</th>
           </tr>
@@ -220,7 +220,7 @@
               <td><strong><%= r.item_name %></strong></td>
               <td style="font-size:0.85rem;color:#666;"><%= r.finder_name %> &lt;<%= r.finder_email %>&gt;</td>
               <td><span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %></span></td>
-              <td>
+              <td class="type-col">
                 <% const isSighting = String(r.message || '').startsWith('[Sighting]'); %>
                 <span class="badge badge-none"><%= isSighting ? 'Lost Sighting' : 'QR Scan' %></span>
               </td>

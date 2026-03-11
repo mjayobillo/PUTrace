@@ -718,6 +718,10 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   border-bottom: 1px solid #f0f2f5;
   vertical-align: middle;
 }
+.admin-table td.type-col,
+.admin-table th.type-col {
+  text-align: center;
+}
 .admin-action-col {
   text-align: right;
 }
