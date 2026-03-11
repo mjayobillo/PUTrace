@@ -718,6 +718,19 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   border-bottom: 1px solid #f0f2f5;
   vertical-align: middle;
 }
+.admin-action-col {
+  text-align: right;
+}
+.admin-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+.admin-actions .btn-sm {
+  width: 120px;
+  text-align: center;
+}
 .admin-table tbody tr:hover { background: #f8f9fc; }
 .admin-row-banned td { opacity: 0.55; }
 

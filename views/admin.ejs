@@ -43,7 +43,7 @@
             <th>Email</th>
             <th>Joined</th>
             <th>Role</th>
-            <th>Action</th>
+            <th class="admin-action-col">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -150,7 +150,7 @@
             <th>Status</th>
             <th>Type</th>
             <th>Date</th>
-            <th>Action</th>
+            <th class="admin-action-col">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -174,7 +174,7 @@
                 <%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
                 <%= new Date(p.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
               </td>
-              <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+              <td class="admin-actions">
                 <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline">View Thread</a>
                 <form method="post" action="/admin/posts/<%= p.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this post permanently?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
@@ -202,8 +202,9 @@
             <th>Item</th>
             <th>Reporter</th>
             <th>Status</th>
+            <th>Type</th>
             <th>Date</th>
-            <th>Action</th>
+            <th class="admin-action-col">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -218,16 +219,16 @@
               </td>
               <td><strong><%= r.item_name %></strong></td>
               <td style="font-size:0.85rem;color:#666;"><%= r.finder_name %> &lt;<%= r.finder_email %>&gt;</td>
-              <td><span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status %></span></td>
+              <td><span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %></span></td>
               <td>
                 <% const isSighting = String(r.message || '').startsWith('[Sighting]'); %>
-                <span class="badge badge-none"><%= isSighting ? 'Lost sighting' : 'QR scan' %></span>
+                <span class="badge badge-none"><%= isSighting ? 'Lost Sighting' : 'QR Scan' %></span>
               </td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
                 <%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
                 <%= new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
               </td>
-              <td style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+              <td class="admin-actions">
                 <a href="/admin/threads/report/<%= r.id %>" class="btn-sm btn-outline">View Thread</a>
                 <form method="post" action="/admin/reports/<%= r.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this report and its messages?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
