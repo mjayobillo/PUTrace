@@ -1,5 +1,5 @@
 {
-  "name": "PUTrace",
+  "name": "putrace",
   "version": "1.0.0",
   "description": "PUTrace - QR-based lost item recovery using Node.js and Supabase",
   "main": "server.js",

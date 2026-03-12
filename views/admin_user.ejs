@@ -111,7 +111,7 @@
               <div style="display:flex;gap:0.4rem;align-items:center;">
                 <span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %></span>
                 <% const isSighting = String(r.message || '').startsWith('[Sighting]'); %>
-                <span class="badge badge-none type-col"><%= isSighting ? 'Lost Sighting' : 'QR Scan' %></span>
+                <span class="badge badge-none type-col"><%= isSighting ? 'Lost' : 'QR Scan' %></span>
                 <span style="font-size:0.82rem;color:#aaa;"><%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></span>
               </div>
             </div>

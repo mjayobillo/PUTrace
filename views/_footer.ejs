@@ -109,15 +109,50 @@
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
       })();
 
-      // Form submit spinner
+      // Form submit spinner + page loading bar
       (function () {
+        var loader = document.getElementById('page-loader');
+
+        // Button spinners on form submit
         document.querySelectorAll('form').forEach(function (form) {
           form.addEventListener('submit', function () {
             var btn = form.querySelector('button[type="submit"], button:not([type])');
             if (!btn || btn.disabled) return;
             btn.disabled = true;
-            btn.innerHTML = '<span class="btn-spinner"></span>Please wait…';
+            var isOutline = btn.classList.contains('btn-outline');
+            var spinnerClass = isOutline ? 'btn-spinner btn-spinner-dark' : 'btn-spinner';
+            btn.innerHTML = '<span class="' + spinnerClass + '"></span>Please wait…';
+            // Show top loading bar
+            if (loader) loader.classList.add('active');
           });
+        });
+
+        // Page loading bar on link navigation
+        document.addEventListener('click', function (e) {
+          var link = e.target.closest('a[href]');
+          if (!link) return;
+          var href = link.getAttribute('href');
+          // Skip anchors, javascript:, new tabs, confirm modals
+          if (!href || href.startsWith('#') || href.startsWith('javascript:')
+              || link.target === '_blank' || link.hasAttribute('data-confirm-modal')
+              || link.hasAttribute('download')) return;
+          if (loader) loader.classList.add('active');
+          document.body.classList.add('page-leaving');
+        });
+
+        // Hide loader if user goes back (bfcache)
+        window.addEventListener('pageshow', function (e) {
+          if (e.persisted) {
+            if (loader) loader.classList.remove('active');
+            document.body.classList.remove('page-leaving');
+            // Re-enable any disabled buttons
+            document.querySelectorAll('button[disabled]').forEach(function (btn) {
+              if (btn.dataset.originalText) {
+                btn.innerHTML = btn.dataset.originalText;
+                btn.disabled = false;
+              }
+            });
+          }
         });
       })();
 

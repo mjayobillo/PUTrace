@@ -781,7 +781,10 @@ async function handleRegisterItem(req, res) {
     if (!item_name || item_name.length > 150) {
       return flashRedirect(req, res, "/items/new", "error", "Item name is required (max 150 characters).");
     }
-    if (item_description && item_description.length > 1000) {
+    if (!item_description) {
+      return flashRedirect(req, res, "/items/new", "error", "Item description is required.");
+    }
+    if (item_description.length > 1000) {
       return flashRedirect(req, res, "/items/new", "error", "Description is too long (max 1000 characters).");
     }
 
@@ -1071,7 +1074,6 @@ app.get("/found-items", requireAuth, async (req, res) => {
   }
 });
 
-// Post a found item to the board
 app.post("/found-items", requireAuth, upload.single("image"), async (req, res) => {
   try {
     // Always use the logged-in user's real name/email — ignore form values
@@ -1082,12 +1084,18 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
     const item_description = sanitize(req.body.item_description);
     const category = req.body.category || "Other";
     const location_found = sanitize(req.body.location_found);
-    const found_at_raw = (req.body.found_at || "").trim();
+    
+    // Process separate date and time fields
+    const found_date_raw = (req.body.found_date || "").trim();
+    const found_time_raw = (req.body.found_time || "").trim();
     let found_at = null;
-    if (found_at_raw) {
-      const foundDate = new Date(found_at_raw);
+    
+    if (found_date_raw) {
+      // If time is provided, append it; otherwise use start of day UTC or local depending on parsing
+      const dateTimeString = found_time_raw ? `${found_date_raw}T${found_time_raw}` : `${found_date_raw}T00:00`;
+      const foundDate = new Date(dateTimeString);
       if (Number.isNaN(foundDate.getTime())) {
-        return flashRedirect(req, res, "/found-items", "error", "Please provide a valid time for when you found the item.");
+        return flashRedirect(req, res, "/found-items", "error", "Please provide a valid date/time for when you found the item.");
       }
       found_at = foundDate.toISOString();
     }
@@ -1371,13 +1379,6 @@ app.post("/found-claims/:claimId/resolve", requireAuth, async (req, res) => {
     if (post.status === "returned") return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "This item has already been returned.");
 
     await supabase.from("found_claims").update({ status: "returned" }).eq("id", claimId);
-    await supabase.from("found_posts").update({ status: "returned" }).eq("id", post.id);
-    await supabase
-      .from("found_claims")
-      .update({ status: "rejected" })
-      .eq("found_post_id", post.id)
-      .neq("id", claimId)
-      .eq("status", "open");
     return flashRedirect(req, res, "/messages", "success", "Great! Marked as returned — glad the item made it back!");
   } catch (err) {
     console.error("Resolve claim error:", err);
@@ -1951,11 +1952,14 @@ app.get("/admin", requireAdmin, async (req, res) => {
       ownersById = Object.fromEntries((owners || []).map((u) => [u.id, u.full_name]));
     }
 
+    // Map reporter emails to user IDs so names can link to admin profiles
+    const usersByEmail = Object.fromEntries((users || []).map(u => [u.email.toLowerCase(), u.id]));
+
     res.render("admin", {
       users: users || [],
       foundPosts: foundPosts || [],
       lostItems: (lostItems || []).map((i) => ({ ...i, owner_name: ownersById[i.user_id] || "Unknown" })),
-      reports: (reports || []).map(r => ({ ...r, item_name: itemMap[r.item_id]?.item_name || "Unknown", item_image: itemMap[r.item_id]?.image_url || null }))
+      reports: (reports || []).map(r => ({ ...r, item_name: itemMap[r.item_id]?.item_name || "Unknown", item_image: itemMap[r.item_id]?.image_url || null, reporter_user_id: usersByEmail[(r.finder_email || "").toLowerCase()] || null }))
     });
   } catch (err) {
     console.error("Admin panel error:", err);

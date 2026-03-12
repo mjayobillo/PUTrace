@@ -51,7 +51,7 @@
           <% users.forEach((u) => { %>
             <tr class="<%= u.is_banned ? 'admin-row-banned' : '' %>">
               <td><a href="/admin/users/<%= u.id %>" style="font-weight:600;color:#3a56e4;"><%= u.full_name %></a></td>
-              <td style="font-size:0.85rem;color:#666;"><%= u.email %></td>
+              <td style="font-size:0.85rem;color:#666;" class="wrap-text"><%= u.email %></td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
                 <%= new Date(u.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' }) %>
               </td>
@@ -64,7 +64,7 @@
                   <span class="badge badge-none">User</span>
                 <% } %>
               </td>
-              <td>
+              <td class="admin-actions admin-action-col">
                 <% if (!u.is_admin) { %>
                   <% if (u.is_banned) { %>
                     <form method="post" action="/admin/users/<%= u.id %>/unban" class="inline-form">
@@ -127,7 +127,7 @@
                 <%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
                 <%= new Date(item.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
               </td>
-              <td class="admin-action-col">
+              <td class="admin-actions admin-action-col">
                 <form method="post" action="/admin/items/<%= item.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this lost item permanently?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
                 </form>
@@ -173,7 +173,7 @@
                 <% if (p.item_description) { %><br><span style="font-size:0.8rem;color:#888;"><%= p.item_description.substring(0,60) %><%= p.item_description.length > 60 ? '…' : '' %></span><% } %>
                 <% if (p.location_found) { %><br><span style="font-size:0.78rem;color:#aaa;"><i data-lucide="map-pin" style="width:0.7rem;height:0.7rem;display:inline;vertical-align:middle;"></i> <%= p.location_found %></span><% } %>
               </td>
-              <td style="font-size:0.85rem;color:#666;"><%= p.finder_name %></td>
+              <td style="font-size:0.85rem;color:#666;"><% if (p.finder_user_id) { %><a href="/admin/users/<%= p.finder_user_id %>" style="color:#3a56e4;font-weight:600;"><%= p.finder_name %></a><% } else { %><%= p.finder_name %><% } %></td>
               <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status === 'claimed' ? 'claim pending' : p.status %></span></td>
               <% const displayDate = p.found_at || p.created_at; %>
               <% const timeLabel = p.found_at ? 'Found' : 'Posted'; %>
@@ -183,7 +183,7 @@
                 <%= new Date(displayDate).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
               </td>
               <td class="admin-actions admin-action-col">
-                <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline">View Thread</a>
+                <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline" style="white-space:nowrap;">View Thread</a>
                 <form method="post" action="/admin/posts/<%= p.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this post permanently?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
                 </form>
@@ -226,18 +226,18 @@
                 <% } %>
               </td>
               <td><strong><%= r.item_name %></strong></td>
-              <td style="font-size:0.85rem;color:#666;"><%= r.finder_name %> &lt;<%= r.finder_email %>&gt;</td>
+              <td style="font-size:0.85rem;color:#666;"><% if (r.reporter_user_id) { %><a href="/admin/users/<%= r.reporter_user_id %>" style="color:#3a56e4;font-weight:600;"><%= r.finder_name %></a><% } else { %><%= r.finder_name %><% } %></td>
               <td><span class="badge <%= r.status === 'open' ? 'badge-open' : 'badge-resolved' %>"><%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %></span></td>
               <td class="type-col">
                 <% const isSighting = String(r.message || '').startsWith('[Sighting]'); %>
-                <span class="badge badge-none"><%= isSighting ? 'Lost Sighting' : 'QR Scan' %></span>
+                <span class="badge badge-none"><%= isSighting ? 'Lost' : 'QR Scan' %></span>
               </td>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
                 <%= new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
                 <%= new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
               </td>
               <td class="admin-actions admin-action-col">
-                <a href="/admin/threads/report/<%= r.id %>" class="btn-sm btn-outline">View Thread</a>
+                <a href="/admin/threads/report/<%= r.id %>" class="btn-sm btn-outline" style="white-space:nowrap;">View Thread</a>
                 <form method="post" action="/admin/reports/<%= r.id %>/delete" class="inline-form" onsubmit="return confirm('Delete this report and its messages?')">
                   <button type="submit" class="btn-sm btn-danger">Delete</button>
                 </form>
