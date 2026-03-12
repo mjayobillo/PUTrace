@@ -1,3 +1,4 @@
+<!-- Page: message threads list  -->
 <%- include('_header') %>
 
 <section class="card">
@@ -16,8 +17,9 @@
             <strong><%= c.item_name %></strong>
             <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
               <span class="badge <%= c.kind === 'found' ? 'badge-active' : 'badge-open' %>" style="font-size:0.68rem;opacity:0.85;"><%= c.kind === 'found' ? 'Found Board' : 'Lost Report' %></span>
-              <span class="badge <%= c.status === 'open' ? 'badge-open' : c.status === 'claimed' ? 'badge-active' : 'badge-resolved' %>">
-                <%= c.status === 'open' ? 'Open' : c.status === 'claimed' ? 'Claim Pending' : c.status === 'returned' ? 'Returned' : 'Resolved' %>
+              <% const statusClass = c.status === 'open' ? 'badge-open' : c.status === 'returned' ? 'badge-resolved' : 'badge-none'; %>
+              <span class="badge <%= statusClass %>">
+                <%= c.status === 'open' ? (c.kind === 'found' ? 'Claim Open' : 'Open') : c.status === 'returned' ? 'Returned' : 'Resolved' %>
               </span>
             </div>
           </div>

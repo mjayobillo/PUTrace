@@ -1,3 +1,4 @@
+<!-- Page: found claim thread  -->
 <%- include('_header') %>
 
 <section class="card">
@@ -7,12 +8,12 @@
   </div>
   <p class="muted">Chat with: <strong><%= counterpartName %></strong></p>
   <p class="muted" style="font-size:0.85rem;">Confirm ownership and arrange pickup below.</p>
-  <% if (isFinder && post.status === 'claimed' && post.claimer_user_id !== post.finder_user_id) { %>
+  <% if (isFinder && claim.status === 'open' && post.status !== 'returned') { %>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
-      <form method="post" action="/found-messages/<%= post.id %>/resolve">
+      <form method="post" action="/found-claims/<%= claim.id %>/resolve">
         <button type="submit" class="button btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;">Mark as Returned</button>
       </form>
-      <form method="post" action="/found-messages/<%= post.id %>/unclaim" onsubmit="return confirm('Reject this claim? The post will become claimable again.')">
+      <form method="post" action="/found-claims/<%= claim.id %>/reject" onsubmit="return confirm('Reject this claim? The claimant will no longer be able to message on this thread.')">
         <button type="submit" class="button btn-sm" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">Reject Claim</button>
       </form>
     </div>
@@ -20,9 +21,9 @@
 </section>
 
 <section class="card">
-  <div class="chat-thread" id="found-chat-thread">
+  <div class="chat-thread" id="found-claim-thread">
     <% if (!messages || messages.length === 0) { %>
-      <p class="muted" id="found-chat-empty">No messages yet. Start the conversation below.</p>
+      <p class="muted" id="found-claim-empty">No messages yet. Start the conversation below.</p>
     <% } else { %>
       <% messages.forEach((m) => { %>
         <div class="chat-bubble <%= m.is_me ? 'mine' : 'theirs' %>">
@@ -34,11 +35,11 @@
     <% } %>
   </div>
 
-  <% if (post.status === 'returned') { %>
-    <p class="muted" id="found-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">This item has been returned. The conversation is now closed.</p>
+  <% if (post.status === 'returned' || claim.status !== 'open') { %>
+    <p class="muted" id="found-claim-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">This conversation is closed.</p>
   <% } else { %>
-  <p class="muted" id="found-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">This item has been returned. The conversation is now closed.</p>
-  <form method="post" action="/found-messages/<%= post.id %>" id="found-message-form">
+  <p class="muted" id="found-claim-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">This conversation is closed.</p>
+  <form method="post" action="/found-claims/<%= claim.id %>" id="found-claim-message-form">
     <label>Message
       <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
     </label>
@@ -49,10 +50,10 @@
 
 <script>
   (function () {
-    var thread = document.getElementById('found-chat-thread');
-    var form = document.getElementById('found-message-form');
-    var closedNote = document.getElementById('found-closed-note');
-    var pollUrl = '/found-messages/<%= post.id %>/poll';
+    var thread = document.getElementById('found-claim-thread');
+    var form = document.getElementById('found-claim-message-form');
+    var closedNote = document.getElementById('found-claim-closed-note');
+    var pollUrl = '/found-claims/<%= claim.id %>/poll';
     var previousCount = <%= messages.length %>;
     var isPolling = false;
 
@@ -78,7 +79,7 @@
     function renderMessages(messages) {
       if (!thread) return;
       if (!messages || messages.length === 0) {
-        thread.innerHTML = '<p class="muted" id="found-chat-empty">No messages yet. Start the conversation below.</p>';
+        thread.innerHTML = '<p class="muted" id="found-claim-empty">No messages yet. Start the conversation below.</p>';
         return;
       }
 
@@ -92,7 +93,7 @@
     }
 
     function syncStatus(status) {
-      var isClosed = status === 'returned';
+      var isClosed = status !== 'open';
       if (closedNote) closedNote.style.display = isClosed ? 'block' : 'none';
       if (form) form.style.display = isClosed ? 'none' : '';
     }

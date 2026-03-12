@@ -1,3 +1,4 @@
+<!-- Page: admin overview  -->
 <%- include('_header') %>
 
 <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
@@ -168,9 +169,12 @@
               </td>
               <td style="font-size:0.85rem;color:#666;"><%= p.finder_name %></td>
               <td><span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status === 'claimed' ? 'claim pending' : p.status %></span></td>
+              <% const displayDate = p.found_at || p.created_at; %>
+              <% const timeLabel = p.found_at ? 'Found' : 'Posted'; %>
               <td style="font-size:0.82rem;color:#888;white-space:nowrap;">
-                <%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
-                <%= new Date(p.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
+                <%= timeLabel %>
+                <%= new Date(displayDate).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
+                <%= new Date(displayDate).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
               </td>
               <td class="admin-actions admin-action-col">
                 <a href="/admin/threads/post/<%= p.id %>" class="btn-sm btn-outline">View Thread</a>

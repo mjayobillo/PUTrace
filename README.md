@@ -15,7 +15,7 @@ PUTrace is a QR-based campus lost-and-found web app. Students register valuables
 Node.js, Express, EJS, Supabase (Postgres + Storage), SendGrid, Multer, Sharp, qrcode
 
 ## Quick Start
-1. Install deps
+1. Install Node.js 18+ and dependencies
    ```bash
    npm install
    ```
@@ -28,12 +28,12 @@ Node.js, Express, EJS, Supabase (Postgres + Storage), SendGrid, Multer, Sharp, q
    npm run dev
    ```
 
-App runs at `http://localhost:5000` by default.
+App runs at `http://localhost:3000` by default. Use `npm start` for a production run.
 
 ## Environment Variables
 ```env
-PORT=5000
-BASE_URL=http://localhost:5000
+PORT=3000
+BASE_URL=http://localhost:3000
 SESSION_SECRET=your-strong-secret
 
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -49,5 +49,5 @@ Notes:
 
 ## Deploy
 - Build: `npm install`
-- Start: `node server.js`
+- Start: `npm start`
 - Set all env vars in your host (Render/Railway/etc.)

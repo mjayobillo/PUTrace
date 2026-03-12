@@ -1,3 +1,4 @@
+<!-- Page: admin user detail  -->
 <%- include('_header') %>
 
 <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
@@ -76,10 +77,12 @@
           <% } else { %>
             <div style="width:52px;height:52px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;flex-shrink:0;">?</div>
           <% } %>
+          <% const displayDate = p.found_at || p.created_at; %>
+          <% const timeLabel = p.found_at ? 'Found' : 'Posted'; %>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;"><%= p.item_name %></div>
             <% if (p.location_found) { %><div style="font-size:0.82rem;color:#888;">📍 <%= p.location_found %></div><% } %>
-            <div style="font-size:0.82rem;color:#aaa;"><%= new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></div>
+            <div style="font-size:0.82rem;color:#aaa;"><%= timeLabel %> <%= new Date(displayDate).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></div>
           </div>
           <span class="badge <%= p.status === 'unclaimed' ? 'badge-active' : p.status === 'claimed' ? 'badge-open' : 'badge-resolved' %>"><%= p.status === 'claimed' ? 'claim pending' : p.status %></span>
         </div>

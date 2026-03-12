@@ -54,21 +54,36 @@ create table if not exists public.found_posts (
   item_description text,
   category text default 'Other',
   location_found text,
+  found_at timestamptz,
   image_url text,
   status text not null default 'unclaimed',
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.found_post_messages (
+create table if not exists public.found_claims (
   id bigserial primary key,
   found_post_id bigint not null references public.found_posts(id) on delete cascade,
+  claimer_user_id uuid not null references public.users(id),
+  status text not null default 'open',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists found_claims_post_id_idx
+  on public.found_claims(found_post_id, created_at);
+
+create index if not exists found_claims_claimer_id_idx
+  on public.found_claims(claimer_user_id, created_at);
+
+create table if not exists public.found_claim_messages (
+  id bigserial primary key,
+  claim_id bigint not null references public.found_claims(id) on delete cascade,
   sender_user_id uuid not null references public.users(id) on delete cascade,
   message text not null,
   created_at timestamptz not null default now()
 );
 
-create index if not exists found_post_messages_post_id_idx
-  on public.found_post_messages(found_post_id, created_at);
+create index if not exists found_claim_messages_claim_id_idx
+  on public.found_claim_messages(claim_id, created_at);
 
 create table if not exists public.report_messages (
   id bigserial primary key,

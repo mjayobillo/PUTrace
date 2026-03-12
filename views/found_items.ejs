@@ -1,3 +1,4 @@
+<!-- Page: found items board and claim modal  -->
 <%- include('_header') %>
 
 <div class="board-intro">
@@ -27,6 +28,7 @@
         </label>
       </div>
       <label>Where did you find it? <input name="location_found" required placeholder="e.g. Library 2nd floor, Room 301" /></label>
+      <label>When did you find it? <input type="datetime-local" name="found_at" /></label>
       <label>Description <textarea name="item_description" rows="3" maxlength="1000" placeholder="Describe the item — color, brand, distinguishing marks..."></textarea></label>
       <label>Photo (optional) <input type="file" name="image" accept="image/*" id="found-item-image-input" class="file-input-tight" /></label>
       <div id="found-item-preview" class="register-item-preview" style="display:none;">
@@ -86,7 +88,7 @@
 
   <div class="lost-grid">
     <% posts.forEach((post) => { %>
-      <article class="lost-card<%= post.status === 'claimed' ? ' lost-card-claimed' : '' %>">
+      <article class="lost-card<%= post.status === 'returned' ? ' lost-card-claimed' : '' %>">
         <div class="lost-card-header">
           <div>
             <h3><%= post.item_name %></h3>
@@ -94,8 +96,10 @@
               <span class="badge badge-category"><%= post.category %></span>
             <% } %>
           </div>
-          <% if (post.status === 'claimed') { %>
-            <span class="badge badge-open">Claim Pending</span>
+          <% if (post.status === 'returned') { %>
+            <span class="badge badge-resolved">Returned</span>
+          <% } else if (post.claim_count && post.claim_count > 0) { %>
+            <span class="badge badge-open">Claims: <%= post.claim_count %></span>
           <% } else { %>
             <span class="badge badge-active">Found</span>
           <% } %>
@@ -114,37 +118,42 @@
           </div>
         <% } %>
         <p class="lost-card-desc"><%= post.item_description || 'No description provided' %></p>
+        <% const displayDate = post.found_at || post.created_at; %>
+        <% const timeLabel = post.found_at ? 'Found' : 'Posted'; %>
         <div class="lost-card-meta">
           <span>Found by <strong><%= post.finder_name.split(' ')[0] %></strong></span>
           <% if (post.location_found) { %>
             <span>&#183; <%= post.location_found %></span>
           <% } %>
-          <span>&#183; <%= new Date(post.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>, <%= new Date(post.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %></span>
+          <span>&#183; <%= timeLabel %> <%= new Date(displayDate).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>, <%= new Date(displayDate).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %></span>
         </div>
-        <% if (post.status === 'claimed') { %>
-          <% const isInvolved = currentUser && (post.finder_user_id === currentUser.id || post.claimer_user_id === currentUser.id); %>
-          <% if (isInvolved) { %>
-            <a href="/found-messages/<%= post.id %>" class="button btn-sm btn-outline btn-block">View Chat</a>
-          <% } else { %>
-            <p class="text-muted-sm center-text" style="margin-top:0.8rem;">This item currently has a pending claim.</p>
-          <% } %>
+        <% if (post.status === 'returned') { %>
+          <p class="text-muted-sm center-text" style="margin-top:0.8rem;">This item has already been returned.</p>
         <% } else if (currentUser && post.finder_user_id === currentUser.id) { %>
           <div class="flex-gap" style="margin-top:0.8rem;">
-            <p class="text-muted-sm" style="flex:1;margin:0;line-height:1.4;">This is your post.</p>
+            <% if (post.claim_count && post.claim_count > 0) { %>
+              <a href="/found-claims/post/<%= post.id %>" class="button btn-sm btn-outline" style="flex:1;">View Claims (<%= post.claim_count %>)</a>
+            <% } else { %>
+              <p class="text-muted-sm" style="flex:1;margin:0;line-height:1.4;">No claims yet.</p>
+            <% } %>
             <form method="post" action="/found-items/<%= post.id %>/delete" class="delete-confirm-form shrink-0" data-delete-label="<%= post.item_name %>" data-delete-message="Remove this post from the board?" data-delete-action="remove">
               <button type="submit" class="btn-sm btn-danger">Remove</button>
             </form>
           </div>
         <% } else if (currentUser) { %>
-          <button type="button"
-                  class="btn-sm btn-success btn-block"
-                  data-item-name="<%= post.item_name %>"
-                  data-finder-name="<%= post.finder_name %>"
-                  data-location="<%= post.location_found || '' %>"
-                  data-post-id="<%= post.id %>"
-                  onclick="showClaimModal(this.dataset.itemName, this.dataset.finderName, this.dataset.location, this.dataset.postId)">
-            This is mine &mdash; Claim it
-          </button>
+          <% if (post.user_claim_id) { %>
+            <a href="/found-claims/<%= post.user_claim_id %>" class="button btn-sm btn-outline btn-block">View Your Claim</a>
+          <% } else { %>
+            <button type="button"
+                    class="btn-sm btn-success btn-block"
+                    data-item-name="<%= post.item_name %>"
+                    data-finder-name="<%= post.finder_name %>"
+                    data-location="<%= post.location_found || '' %>"
+                    data-post-id="<%= post.id %>"
+                    onclick="showClaimModal(this.dataset.itemName, this.dataset.finderName, this.dataset.location, this.dataset.postId)">
+              This is mine &mdash; Claim it
+            </button>
+          <% } %>
         <% } else { %>
           <p class="text-muted-sm center-text" style="margin-top:0.8rem;">
             <a href="/login">Login</a> to claim this item

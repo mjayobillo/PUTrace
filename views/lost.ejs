@@ -1,3 +1,4 @@
+<!-- Page: lost board and sighting form  -->
 <%- include('_header') %>
 
 <div class="board-intro">
@@ -76,6 +77,13 @@
               <%= new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %>,
               <%= new Date(item.created_at).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }) %>
             </span>
+            <% if (currentUser && currentUser.id === item.user_id) { %>
+              <span class="flex-gap" style="margin-left:auto;">
+                <form method="post" action="/item/<%= item.id %>/delete" class="inline-form delete-confirm-form" data-delete-label="<%= item.item_name %>" data-delete-message="Delete this item and all its reports?">
+                  <button type="submit" class="btn-sm btn-danger">Delete</button>
+                </form>
+              </span>
+            <% } %>
           </div>
         </div>
         <div class="lost-card-form-panel">

@@ -1,0 +1,37 @@
+<!-- Page: admin claims list  -->
+<%- include('_header') %>
+
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+  <i data-lucide="shield" style="width:1.4rem;height:1.4rem;color:#3a56e4;"></i>
+  <h2 style="font-size:1.4rem;margin:0;">Admin — Claims</h2>
+</div>
+
+<section class="card">
+  <div class="section-head">
+    <h2 class="section-title">Claims for <%= post.item_name %></h2>
+    <a href="/admin" class="button btn-sm btn-outline">← Back to Admin</a>
+  </div>
+  <p class="muted" style="font-size:0.9rem;">Review claims and open a thread to inspect messages.</p>
+</section>
+
+<section class="card">
+  <% if (!claims || claims.length === 0) { %>
+    <p class="muted">No claims yet.</p>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+      <% claims.forEach((c) => { %>
+        <div style="display:flex;gap:1rem;align-items:center;padding:0.65rem 0.75rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8f9fc;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;"><%= c.claimer_name %></div>
+            <% if (c.claimer_email) { %><div style="font-size:0.82rem;color:#888;"><%= c.claimer_email %></div><% } %>
+            <div style="font-size:0.82rem;color:#aaa;">Claimed <%= new Date(c.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }) %></div>
+          </div>
+          <span class="badge <%= c.status === 'open' ? 'badge-open' : c.status === 'returned' ? 'badge-resolved' : 'badge-none' %>"><%= c.status %></span>
+          <a href="/admin/threads/claim/<%= c.id %>" class="button btn-sm btn-outline">Open Thread</a>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('_footer') %>

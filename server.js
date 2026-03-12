@@ -274,7 +274,7 @@ app.use(async (req, res, next) => {
       .eq("user_id", req.session.userId);
     const ownedIds = (userItems || []).map((i) => i.id);
     const readReports = req.session.lastReadReports || {};
-    const readFoundPosts = req.session.lastReadFoundPosts || {};
+    const readFoundClaims = req.session.lastReadFoundClaims || {};
     let unread = 0;
     if (ownedIds.length > 0) {
       const { data: openReports } = await supabase
@@ -295,20 +295,36 @@ app.use(async (req, res, next) => {
         }).length;
       }
     }
-    const { data: involvedPosts } = await supabase
+    const { data: finderPosts } = await supabase
       .from("found_posts")
       .select("id")
-      .eq("status", "claimed")
-      .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
-    const involvedPostIds = (involvedPosts || []).map((p) => p.id);
-    if (involvedPostIds.length > 0) {
+      .eq("finder_user_id", req.session.userId);
+    const finderPostIds = (finderPosts || []).map((p) => p.id);
+
+    let claimRows = [];
+    if (finderPostIds.length > 0) {
+      const { data } = await supabase
+        .from("found_claims")
+        .select("id")
+        .or(`claimer_user_id.eq.${req.session.userId},found_post_id.in.(${finderPostIds.join(",")})`);
+      claimRows = data || [];
+    } else {
+      const { data } = await supabase
+        .from("found_claims")
+        .select("id")
+        .eq("claimer_user_id", req.session.userId);
+      claimRows = data || [];
+    }
+
+    const claimIds = (claimRows || []).map((c) => c.id);
+    if (claimIds.length > 0) {
       const { data: foundMsgs } = await supabase
-        .from("found_post_messages")
-        .select("id, found_post_id, created_at")
-        .in("found_post_id", involvedPostIds)
+        .from("found_claim_messages")
+        .select("id, claim_id, created_at")
+        .in("claim_id", claimIds)
         .neq("sender_user_id", req.session.userId);
       unread += (foundMsgs || []).filter((m) => {
-        const lr = readFoundPosts[String(m.found_post_id)];
+        const lr = readFoundClaims[String(m.claim_id)];
         return !lr || new Date(m.created_at) > new Date(lr);
       }).length;
     }
@@ -670,24 +686,62 @@ app.get("/dashboard", requireAuth, async (req, res) => {
       reports = data || [];
     }
 
-    // Get found post activity (posts this user has filed or claimed)
-    const { data: foundActivity } = await supabase
+    const { data: finderPosts } = await supabase
       .from("found_posts")
-      .select("id, item_name, status, finder_user_id, claimer_user_id, created_at")
-      .eq("status", "claimed")
-      .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`)
-      .order("created_at", { ascending: false });
+      .select("id, item_name, finder_user_id, finder_name, status")
+      .eq("finder_user_id", req.session.userId);
+    const finderPostIds = (finderPosts || []).map((p) => p.id);
 
-    const enrichedFoundActivity = await Promise.all((foundActivity || []).map(async (fp) => {
-      const isClaimer = fp.claimer_user_id === req.session.userId;
-      const otherUserId = isClaimer ? fp.finder_user_id : fp.claimer_user_id;
-      let otherName = isClaimer ? "Finder" : "Claimer";
-      if (otherUserId) {
-        const { data: other } = await supabase.from("users").select("full_name").eq("id", otherUserId).maybeSingle();
-        if (other?.full_name) otherName = other.full_name;
-      }
-      return { ...fp, role: isClaimer ? "claimer" : "finder", other_name: otherName };
-    }));
+    let claimRows = [];
+    if (finderPostIds.length > 0) {
+      const { data } = await supabase
+        .from("found_claims")
+        .select("id, found_post_id, claimer_user_id, status, created_at")
+        .or(`claimer_user_id.eq.${req.session.userId},found_post_id.in.(${finderPostIds.join(",")})`)
+        .neq("status", "rejected");
+      claimRows = data || [];
+    } else {
+      const { data } = await supabase
+        .from("found_claims")
+        .select("id, found_post_id, claimer_user_id, status, created_at")
+        .eq("claimer_user_id", req.session.userId)
+        .neq("status", "rejected");
+      claimRows = data || [];
+    }
+
+    const claimPostIds = [...new Set(claimRows.map((c) => c.found_post_id))];
+    let postsById = {};
+    if (claimPostIds.length > 0) {
+      const { data: posts } = await supabase
+        .from("found_posts")
+        .select("id, item_name, finder_user_id, finder_name, status")
+        .in("id", claimPostIds);
+      postsById = Object.fromEntries((posts || []).map((p) => [p.id, p]));
+    }
+
+    const claimerIds = [...new Set(claimRows.map((c) => c.claimer_user_id).filter(Boolean))];
+    let claimersById = {};
+    if (claimerIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", claimerIds);
+      claimersById = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
+    }
+
+    const enrichedFoundActivity = (claimRows || []).map((c) => {
+      const post = postsById[c.found_post_id];
+      if (!post) return null;
+      const isClaimer = c.claimer_user_id === req.session.userId;
+      const otherName = isClaimer
+        ? (post.finder_name || "Finder")
+        : (claimersById[c.claimer_user_id] || "Claimer");
+      return {
+        id: c.id,
+        item_name: post.item_name,
+        status: post.status === "returned" ? "returned" : c.status,
+        role: isClaimer ? "claimer" : "finder",
+        other_name: otherName,
+        created_at: c.created_at
+      };
+    }).filter(Boolean);
 
     // Count open reports per item
     const itemNameMap = Object.fromEntries(filteredItems.map((i) => [i.id, i.item_name]));
@@ -977,14 +1031,39 @@ app.get("/found-items", requireAuth, async (req, res) => {
     let query = supabase
       .from("found_posts")
       .select("*")
-      .in("status", ["unclaimed", "claimed"])
+      .in("status", ["unclaimed", "claimed", "returned"])
       .order("created_at", { ascending: false });
     if (filterCategory) query = query.eq("category", filterCategory);
 
     const { data: posts } = await query;
     const filtered = filterBySearch(posts, search, ["item_name", "item_description", "category", "location_found"]);
 
-    res.render("found_items", { posts: filtered, categories: CATEGORIES, search, filterCategory });
+    const postIds = (filtered || []).map((p) => p.id);
+    let claimCounts = {};
+    let userClaimByPost = {};
+    if (postIds.length > 0) {
+      const { data: claims } = await supabase
+        .from("found_claims")
+        .select("id, found_post_id, claimer_user_id, status")
+        .in("found_post_id", postIds);
+      const rows = claims || [];
+      rows.forEach((c) => {
+        if (c.status === "open") {
+          claimCounts[c.found_post_id] = (claimCounts[c.found_post_id] || 0) + 1;
+        }
+        if (c.claimer_user_id === req.session.userId && c.status !== "rejected") {
+          if (!userClaimByPost[c.found_post_id]) userClaimByPost[c.found_post_id] = c.id;
+        }
+      });
+    }
+
+    const enriched = (filtered || []).map((p) => ({
+      ...p,
+      claim_count: claimCounts[p.id] || 0,
+      user_claim_id: userClaimByPost[p.id] || null
+    }));
+
+    res.render("found_items", { posts: enriched, categories: CATEGORIES, search, filterCategory });
   } catch (err) {
     console.error("Found board error:", err);
     setFlash(req, "error", "Couldn't load the Found Board. Please try again.");
@@ -1003,6 +1082,15 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
     const item_description = sanitize(req.body.item_description);
     const category = req.body.category || "Other";
     const location_found = sanitize(req.body.location_found);
+    const found_at_raw = (req.body.found_at || "").trim();
+    let found_at = null;
+    if (found_at_raw) {
+      const foundDate = new Date(found_at_raw);
+      if (Number.isNaN(foundDate.getTime())) {
+        return flashRedirect(req, res, "/found-items", "error", "Please provide a valid time for when you found the item.");
+      }
+      found_at = foundDate.toISOString();
+    }
 
     // Validate
     if (!item_name || item_name.length > 150) return flashRedirect(req, res, "/found-items", "error", "Item name is required (max 150 chars).");
@@ -1017,6 +1105,7 @@ app.post("/found-items", requireAuth, upload.single("image"), async (req, res) =
       item_description: item_description || null,
       category: normalizeCategory(category),
       location_found: location_found || null,
+      found_at,
       image_url,
       status: "unclaimed",
       finder_user_id: req.session.userId
@@ -1039,10 +1128,9 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
       .from("found_posts")
       .select("*")
       .eq("id", Number(req.params.id))
-      .eq("status", "unclaimed")
       .maybeSingle();
 
-    if (!post) {
+    if (!post || post.status === "returned") {
       setFlash(req, "error", "That post is no longer available.");
       return res.redirect("/found-items");
     }
@@ -1051,26 +1139,39 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
     if (post.finder_user_id === claimerId) {
       return flashRedirect(req, res, "/found-items", "error", "You can't claim your own found post.");
     }
-    const { error: claimError } = await supabase
-      .from("found_posts")
-      .update({ status: "claimed", claimer_user_id: claimerId })
-      .eq("id", post.id);
-    if (claimError) {
+
+    const { data: existing } = await supabase
+      .from("found_claims")
+      .select("id, status")
+      .eq("found_post_id", post.id)
+      .eq("claimer_user_id", claimerId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing && existing.status !== "rejected") {
+      setFlash(req, "info", "You already claimed this item. Continue the conversation below.");
+      return res.redirect(`/found-claims/${existing.id}`);
+    }
+
+    const { data: newClaim, error: claimError } = await supabase
+      .from("found_claims")
+      .insert({ found_post_id: post.id, claimer_user_id: claimerId, status: "open" })
+      .select("id")
+      .maybeSingle();
+    if (claimError || !newClaim) {
       return flashRedirect(req, res, "/found-items", "error", "Couldn't claim that post. Please try again.");
     }
 
+    const claimId = newClaim.id;
+
     // Auto-create an opening message to kick off the thread
-    const { error: messageError } = await supabase.from("found_post_messages").insert({
-      found_post_id: post.id,
+    const { error: messageError } = await supabase.from("found_claim_messages").insert({
+      claim_id: claimId,
       sender_user_id: claimerId,
       message: `Hi! I believe "${post.item_name}" is mine. I'd like to arrange a pickup to confirm ownership.`
     });
     if (messageError) {
-      await supabase
-        .from("found_posts")
-        .update({ status: "unclaimed", claimer_user_id: null })
-        .eq("id", post.id)
-        .eq("claimer_user_id", claimerId);
+      await supabase.from("found_claims").delete().eq("id", claimId);
       return flashRedirect(req, res, "/found-items", "error", "Claim started but the conversation couldn't be created. Please try again.");
     }
 
@@ -1084,7 +1185,7 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
            <p><strong>${claimer?.full_name || 'Someone'}</strong> (${claimer?.email || 'unknown email'}) claimed your found item post for <strong>${post.item_name}</strong>.</p>
            <p>You can chat with them inside PUTrace to confirm ownership and arrange pickup.</p>
            <p style="margin-top:20px;">
-             <a href="${BASE_URL}/found-messages/${post.id}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">Open Conversation</a>
+             <a href="${BASE_URL}/found-claims/${claimId}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">Open Conversation</a>
            </p>`
         );
       }
@@ -1093,7 +1194,7 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
     }
 
     setFlash(req, "success", `You claimed "${post.item_name}"! Chat with the finder below to confirm ownership and arrange pickup.`);
-    return res.redirect(`/found-messages/${post.id}`);
+    return res.redirect(`/found-claims/${claimId}`);
   } catch (err) {
     console.error("Claim error:", err);
     setFlash(req, "error", "Something went wrong.");
@@ -1101,21 +1202,62 @@ app.post("/found-items/:id/claim", requireAuth, async (req, res) => {
   }
 });
 
-// ── Found Item Chat Thread ──
+// ── Found Claim Threads ──
 
-app.get("/found-messages/:postId", requireAuth, async (req, res) => {
+app.get("/found-claims/post/:postId", requireAuth, async (req, res) => {
   try {
     const postId = Number(req.params.postId);
     const { data: post } = await supabase.from("found_posts").select("*").eq("id", postId).maybeSingle();
     if (!post) return res.status(404).render("not_found");
+    if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
+
+    const { data: claims } = await supabase
+      .from("found_claims")
+      .select("id, claimer_user_id, status, created_at")
+      .eq("found_post_id", postId)
+      .order("created_at", { ascending: false });
+
+    const claimerIds = [...new Set((claims || []).map((c) => c.claimer_user_id).filter(Boolean))];
+    let usersById = {};
+    if (claimerIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name, email").in("id", claimerIds);
+      usersById = Object.fromEntries((users || []).map((u) => [u.id, u]));
+    }
+
+    res.render("found_claims_list", {
+      post,
+      claims: (claims || []).map((c) => ({
+        ...c,
+        claimer_name: usersById[c.claimer_user_id]?.full_name || "Claimer",
+        claimer_email: usersById[c.claimer_user_id]?.email || ""
+      }))
+    });
+  } catch (err) {
+    console.error("Found claims list error:", err);
+    return flashRedirect(req, res, "/found-items", "error", "Failed to load claims.");
+  }
+});
+
+app.get("/found-claims/:claimId", requireAuth, async (req, res) => {
+  try {
+    const claimId = Number(req.params.claimId);
+    const { data: claim } = await supabase
+      .from("found_claims")
+      .select("id, found_post_id, claimer_user_id, status, created_at")
+      .eq("id", claimId)
+      .maybeSingle();
+    if (!claim) return res.status(404).render("not_found");
+
+    const { data: post } = await supabase.from("found_posts").select("*").eq("id", claim.found_post_id).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
 
     const userId = req.session.userId;
-    if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).send("Forbidden");
+    if (post.finder_user_id !== userId && claim.claimer_user_id !== userId) return res.status(403).send("Forbidden");
 
     const { data: rows } = await supabase
-      .from("found_post_messages")
-      .select("id, found_post_id, sender_user_id, message, created_at")
-      .eq("found_post_id", postId)
+      .from("found_claim_messages")
+      .select("id, claim_id, sender_user_id, message, created_at")
+      .eq("claim_id", claimId)
       .order("created_at", { ascending: true });
     const messages = rows || [];
 
@@ -1126,46 +1268,48 @@ app.get("/found-messages/:postId", requireAuth, async (req, res) => {
       senderMap = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
     }
 
-    const isClaimer = post.claimer_user_id === userId;
-    let counterpartName = "Unknown";
-    const otherUserId = isClaimer ? post.finder_user_id : post.claimer_user_id;
+    const isClaimer = claim.claimer_user_id === userId;
+    let counterpartName = isClaimer ? post.finder_name : "Claimer";
+    const otherUserId = isClaimer ? post.finder_user_id : claim.claimer_user_id;
     if (otherUserId) {
       const { data: other } = await supabase.from("users").select("full_name").eq("id", otherUserId).maybeSingle();
-      counterpartName = other?.full_name || (isClaimer ? post.finder_name : "Claimer");
-    } else {
-      counterpartName = isClaimer ? post.finder_name : "Claimer";
+      if (other?.full_name) counterpartName = other.full_name;
     }
 
-    req.session.lastReadFoundPosts = { ...(req.session.lastReadFoundPosts || {}), [String(postId)]: new Date().toISOString() };
-    res.render("found_thread", {
+    req.session.lastReadFoundClaims = { ...(req.session.lastReadFoundClaims || {}), [String(claimId)]: new Date().toISOString() };
+    res.render("found_claim_thread", {
       post,
+      claim,
       messages: messages.map((m) => serializeChatMessage({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }, userId)),
       counterpartName,
       isFinder: post.finder_user_id === userId
     });
   } catch (err) {
-    console.error("Found thread error:", err);
+    console.error("Found claim thread error:", err);
     return flashRedirect(req, res, "/messages", "error", "Failed to load conversation.");
   }
 });
 
-app.get("/found-messages/:postId/poll", requireAuth, async (req, res) => {
+app.get("/found-claims/:claimId/poll", requireAuth, async (req, res) => {
   try {
-    const postId = Number(req.params.postId);
-    const { data: post } = await supabase
-      .from("found_posts")
-      .select("id, status, finder_user_id, claimer_user_id")
-      .eq("id", postId)
+    const claimId = Number(req.params.claimId);
+    const { data: claim } = await supabase
+      .from("found_claims")
+      .select("id, found_post_id, claimer_user_id, status")
+      .eq("id", claimId)
       .maybeSingle();
+    if (!claim) return res.status(404).json({ error: "not_found" });
+
+    const { data: post } = await supabase.from("found_posts").select("id, status, finder_user_id").eq("id", claim.found_post_id).maybeSingle();
     if (!post) return res.status(404).json({ error: "not_found" });
 
     const userId = req.session.userId;
-    if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).json({ error: "forbidden" });
+    if (post.finder_user_id !== userId && claim.claimer_user_id !== userId) return res.status(403).json({ error: "forbidden" });
 
     const { data: rows } = await supabase
-      .from("found_post_messages")
+      .from("found_claim_messages")
       .select("id, sender_user_id, message, created_at")
-      .eq("found_post_id", postId)
+      .eq("claim_id", claimId)
       .order("created_at", { ascending: true });
     const messages = rows || [];
 
@@ -1176,84 +1320,128 @@ app.get("/found-messages/:postId/poll", requireAuth, async (req, res) => {
       senderMap = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
     }
 
-    req.session.lastReadFoundPosts = { ...(req.session.lastReadFoundPosts || {}), [String(postId)]: new Date().toISOString() };
+    req.session.lastReadFoundClaims = { ...(req.session.lastReadFoundClaims || {}), [String(claimId)]: new Date().toISOString() };
     return res.json({
-      status: post.status,
+      status: post.status === "returned" ? "returned" : claim.status,
       messages: messages.map((m) => serializeChatMessage({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }, userId))
     });
   } catch (err) {
-    console.error("Found message poll error:", err);
+    console.error("Found claim poll error:", err);
     return res.status(500).json({ error: "server_error" });
   }
 });
 
-app.post("/found-messages/:postId/unclaim", requireAuth, async (req, res) => {
+app.post("/found-claims/:claimId/reject", requireAuth, async (req, res) => {
   try {
-    const postId = Number(req.params.postId);
-    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status, claimer_user_id").eq("id", postId).maybeSingle();
+    const claimId = Number(req.params.claimId);
+    const { data: claim } = await supabase
+      .from("found_claims")
+      .select("id, found_post_id, status, claimer_user_id")
+      .eq("id", claimId)
+      .maybeSingle();
+    if (!claim) return res.status(404).render("not_found");
+
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status").eq("id", claim.found_post_id).maybeSingle();
     if (!post) return res.status(404).render("not_found");
     if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
-    if (post.status !== "claimed") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Post is not currently claimed.");
+    if (post.status === "returned") return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "This item has already been returned.");
+    if (claim.status !== "open") return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "This claim is already closed.");
 
-    const { error: deleteMessagesError } = await supabase.from("found_post_messages").delete().eq("found_post_id", postId);
-    if (deleteMessagesError) {
-      return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Couldn't clear the previous claim thread. Please try again.");
-    }
-
-    const { error: unclaimError } = await supabase.from("found_posts").update({ status: "unclaimed", claimer_user_id: null }).eq("id", postId);
-    if (unclaimError) {
-      // Restore a minimal system message so the current claimer is not left with a claimed post and no thread context.
-      if (post.claimer_user_id) {
-        await supabase.from("found_post_messages").insert({
-          found_post_id: postId,
-          sender_user_id: post.claimer_user_id,
-          message: `Hi! I believe this item is mine. I'd like to arrange a pickup to confirm ownership.`
-        });
-      }
-      return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Couldn't reject the claim. Please try again.");
-    }
-
-    return flashRedirect(req, res, "/found-items", "success", "Claim rejected. The post is open for others to claim.");
+    await supabase.from("found_claims").update({ status: "rejected" }).eq("id", claimId);
+    return flashRedirect(req, res, `/found-claims/post/${post.id}`, "success", "Claim rejected.");
   } catch (err) {
-    console.error("Unclaim error:", err);
-    return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
+    console.error("Reject claim error:", err);
+    return flashRedirect(req, res, `/found-claims/${req.params.claimId}`, "error", "Something went wrong.");
   }
 });
 
-app.post("/found-messages/:postId/resolve", requireAuth, async (req, res) => {
+app.post("/found-claims/:claimId/resolve", requireAuth, async (req, res) => {
   try {
-    const postId = Number(req.params.postId);
-    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status").eq("id", postId).maybeSingle();
+    const claimId = Number(req.params.claimId);
+    const { data: claim } = await supabase
+      .from("found_claims")
+      .select("id, found_post_id, status")
+      .eq("id", claimId)
+      .maybeSingle();
+    if (!claim) return res.status(404).render("not_found");
+
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id, status").eq("id", claim.found_post_id).maybeSingle();
     if (!post) return res.status(404).render("not_found");
     if (post.finder_user_id !== req.session.userId) return res.status(403).send("Forbidden");
-    if (post.status !== "claimed") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Post must be claimed before marking it returned.");
-    await supabase.from("found_posts").update({ status: "returned" }).eq("id", postId);
+    if (post.status === "returned") return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "This item has already been returned.");
+
+    await supabase.from("found_claims").update({ status: "returned" }).eq("id", claimId);
+    await supabase.from("found_posts").update({ status: "returned" }).eq("id", post.id);
+    await supabase
+      .from("found_claims")
+      .update({ status: "rejected" })
+      .eq("found_post_id", post.id)
+      .neq("id", claimId)
+      .eq("status", "open");
     return flashRedirect(req, res, "/messages", "success", "Great! Marked as returned — glad the item made it back!");
   } catch (err) {
-    console.error("Resolve found post error:", err);
-    return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
+    console.error("Resolve claim error:", err);
+    return flashRedirect(req, res, `/found-claims/${req.params.claimId}`, "error", "Something went wrong.");
   }
 });
 
-app.post("/found-messages/:postId", requireAuth, async (req, res) => {
+app.post("/found-claims/:claimId", requireAuth, async (req, res) => {
   try {
-    const postId = Number(req.params.postId);
-    const { data: post } = await supabase.from("found_posts").select("id, status, finder_user_id, claimer_user_id").eq("id", postId).maybeSingle();
+    const claimId = Number(req.params.claimId);
+    const { data: claim } = await supabase
+      .from("found_claims")
+      .select("id, found_post_id, claimer_user_id, status")
+      .eq("id", claimId)
+      .maybeSingle();
+    if (!claim) return res.status(404).render("not_found");
+
+    const { data: post } = await supabase.from("found_posts").select("id, status, finder_user_id").eq("id", claim.found_post_id).maybeSingle();
     if (!post) return res.status(404).render("not_found");
 
     const userId = req.session.userId;
-    if (post.finder_user_id !== userId && post.claimer_user_id !== userId) return res.status(403).send("Forbidden");
-    if (post.status === "returned") return flashRedirect(req, res, `/found-messages/${postId}`, "error", "This conversation is closed — the item has already been returned.");
+    if (post.finder_user_id !== userId && claim.claimer_user_id !== userId) return res.status(403).send("Forbidden");
+    if (post.status === "returned" || claim.status !== "open") {
+      return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "This conversation is closed.");
+    }
 
     const text = sanitize(req.body.message || "");
-    if (!text) return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Message cannot be empty.");
-    if (text.length > 1000) return flashRedirect(req, res, `/found-messages/${postId}`, "error", "Message too long (max 1000 chars).");
+    if (!text) return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "Message cannot be empty.");
+    if (text.length > 1000) return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "Message too long (max 1000 chars).");
 
-    await supabase.from("found_post_messages").insert({ found_post_id: postId, sender_user_id: userId, message: text });
-    return res.redirect(`/found-messages/${postId}`);
+    await supabase.from("found_claim_messages").insert({ claim_id: claimId, sender_user_id: userId, message: text });
+    return res.redirect(`/found-claims/${claimId}`);
   } catch (err) {
-    console.error("Found messages send error:", err);
-    return flashRedirect(req, res, `/found-messages/${req.params.postId}`, "error", "Something went wrong.");
+    console.error("Found claim send error:", err);
+    return flashRedirect(req, res, `/found-claims/${req.params.claimId}`, "error", "Something went wrong.");
+  }
+});
+
+// Legacy claim thread URL: redirect to claim list/thread
+app.get("/found-messages/:postId", requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.postId);
+    const { data: post } = await supabase.from("found_posts").select("id, finder_user_id").eq("id", postId).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+
+    const userId = req.session.userId;
+    if (post.finder_user_id === userId) {
+      return res.redirect(`/found-claims/post/${postId}`);
+    }
+
+    const { data: claim } = await supabase
+      .from("found_claims")
+      .select("id")
+      .eq("found_post_id", postId)
+      .eq("claimer_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (claim) return res.redirect(`/found-claims/${claim.id}`);
+
+    return res.redirect("/found-items");
+  } catch (err) {
+    console.error("Legacy found thread redirect error:", err);
+    return res.redirect("/found-items");
   }
 });
 
@@ -1342,44 +1530,77 @@ app.get("/messages", requireAuth, async (req, res) => {
       })
       .filter(Boolean);
 
-    // Fetch found post threads where user is finder or claimer
-    const { data: foundPosts } = await supabase
+    const { data: finderPosts } = await supabase
       .from("found_posts")
-      .select("id, item_name, status, finder_user_id, claimer_user_id, created_at")
-      .in("status", ["claimed", "returned"])
-      .or(`finder_user_id.eq.${req.session.userId},claimer_user_id.eq.${req.session.userId}`);
+      .select("id, item_name, finder_user_id, finder_name")
+      .eq("finder_user_id", req.session.userId);
+    const finderPostIds = (finderPosts || []).map((p) => p.id);
 
-    const foundConvos = await Promise.all((foundPosts || []).map(async (fp) => {
+    let claimRows = [];
+    if (finderPostIds.length > 0) {
+      const { data } = await supabase
+        .from("found_claims")
+        .select("id, found_post_id, claimer_user_id, status, created_at")
+        .or(`claimer_user_id.eq.${req.session.userId},found_post_id.in.(${finderPostIds.join(",")})`)
+        .neq("status", "rejected");
+      claimRows = data || [];
+    } else {
+      const { data } = await supabase
+        .from("found_claims")
+        .select("id, found_post_id, claimer_user_id, status, created_at")
+        .eq("claimer_user_id", req.session.userId)
+        .neq("status", "rejected");
+      claimRows = data || [];
+    }
+
+    const claimPostIds = [...new Set(claimRows.map((c) => c.found_post_id))];
+    let postsById = {};
+    if (claimPostIds.length > 0) {
+      const { data: posts } = await supabase
+        .from("found_posts")
+        .select("id, item_name, finder_user_id, finder_name, status, created_at")
+        .in("id", claimPostIds);
+      postsById = Object.fromEntries((posts || []).map((p) => [p.id, p]));
+    }
+
+    const claimerIds = [...new Set(claimRows.map((c) => c.claimer_user_id).filter(Boolean))];
+    let claimersById = {};
+    if (claimerIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name").in("id", claimerIds);
+      claimersById = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
+    }
+
+    const foundConvos = await Promise.all((claimRows || []).map(async (c) => {
+      const post = postsById[c.found_post_id];
+      if (!post) return null;
+
       const { data: lastMsg } = await supabase
-        .from("found_post_messages")
+        .from("found_claim_messages")
         .select("message, created_at")
-        .eq("found_post_id", fp.id)
+        .eq("claim_id", c.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const isClaimer = fp.claimer_user_id === req.session.userId;
-      const otherUserId = isClaimer ? fp.finder_user_id : fp.claimer_user_id;
-      let counterpartName = isClaimer ? "Finder" : "Claimer";
-      if (otherUserId) {
-        const { data: other } = await supabase.from("users").select("full_name").eq("id", otherUserId).maybeSingle();
-        if (other?.full_name) counterpartName = other.full_name;
-      }
+      const isClaimer = c.claimer_user_id === req.session.userId;
+      const counterpartName = isClaimer
+        ? (post.finder_name || "Finder")
+        : (claimersById[c.claimer_user_id] || "Claimer");
 
       return {
-        id: fp.id,
-        url: `/found-messages/${fp.id}`,
-        item_name: fp.item_name,
+        id: c.id,
+        url: `/found-claims/${c.id}`,
+        item_name: post.item_name,
         preview: lastMsg?.message || "Claim initiated",
-        status: fp.status,
+        status: post.status === "returned" ? "returned" : c.status,
         kind: 'found',
         role: isClaimer ? "claimer" : "finder",
         counterpart_name: counterpartName,
-        created_at: lastMsg?.created_at || fp.created_at
+        created_at: lastMsg?.created_at || c.created_at
       };
     }));
 
-    const allConversations = [...conversations, ...foundConvos]
+    const allConversations = [...conversations, ...(foundConvos || []).filter(Boolean)]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     res.render("messages", { conversations: allConversations });
@@ -1651,8 +1872,13 @@ app.post("/found-items/:id/delete", requireAuth, async (req, res) => {
       setFlash(req, "error", "Post not found.");
       return res.redirect("/found-items");
     }
-    if (post.status !== "unclaimed") {
-      setFlash(req, "error", `Cannot delete \"${post.item_name}\" — it has already been claimed. Reject the claim first.`);
+    const { data: openClaims } = await supabase
+      .from("found_claims")
+      .select("id")
+      .eq("found_post_id", postId)
+      .eq("status", "open");
+    if (openClaims && openClaims.length > 0) {
+      setFlash(req, "error", `Cannot delete \"${post.item_name}\" — it has active claims. Resolve or reject them first.`);
       return res.redirect("/found-items");
     }
     if (post.image_url) {
@@ -1702,7 +1928,7 @@ app.post("/item/:id/delete", requireAuth, async (req, res) => {
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const { data: users } = await supabase.from("users").select("id, full_name, email, is_admin, is_banned, created_at").order("created_at", { ascending: false });
-    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, finder_user_id, image_url, item_description, location_found").order("created_at", { ascending: false });
+    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, finder_name, finder_email, status, created_at, found_at, finder_user_id, image_url, item_description, location_found").order("created_at", { ascending: false });
     const { data: lostItems } = await supabase
       .from("items")
       .select("id, item_name, item_description, category, image_url, created_at, user_id")
@@ -1744,7 +1970,7 @@ app.get("/admin/users/:id", requireAdmin, async (req, res) => {
     if (!user) return flashRedirect(req, res, "/admin", "error", "User not found.");
 
     const { data: items } = await supabase.from("items").select("id, item_name, item_status, category, image_url, created_at").eq("user_id", userId).order("created_at", { ascending: false });
-    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, status, image_url, location_found, created_at").eq("finder_user_id", userId).order("created_at", { ascending: false });
+    const { data: foundPosts } = await supabase.from("found_posts").select("id, item_name, status, image_url, location_found, created_at, found_at").eq("finder_user_id", userId).order("created_at", { ascending: false });
     const { data: reports } = await supabase.from("finder_reports").select("id, item_id, message, status, created_at").eq("finder_email", user.email).order("created_at", { ascending: false });
 
     const itemIds = [...new Set((reports || []).map(r => r.item_id))];
@@ -1845,17 +2071,54 @@ app.get("/admin/threads/report/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// ── Admin: View found post thread ──
+// ── Admin: View found post claims list ──
 app.get("/admin/threads/post/:id", requireAdmin, async (req, res) => {
   try {
     const postId = Number(req.params.id);
     const { data: post } = await supabase.from("found_posts").select("*").eq("id", postId).maybeSingle();
     if (!post) return res.status(404).render("not_found");
 
-    const { data: rows } = await supabase
-      .from("found_post_messages")
-      .select("id, sender_user_id, message, created_at")
+    const { data: claims } = await supabase
+      .from("found_claims")
+      .select("id, claimer_user_id, status, created_at")
       .eq("found_post_id", postId)
+      .order("created_at", { ascending: false });
+
+    const claimerIds = [...new Set((claims || []).map((c) => c.claimer_user_id).filter(Boolean))];
+    let usersById = {};
+    if (claimerIds.length > 0) {
+      const { data: users } = await supabase.from("users").select("id, full_name, email").in("id", claimerIds);
+      usersById = Object.fromEntries((users || []).map((u) => [u.id, u]));
+    }
+
+    res.render("admin_claims_list", {
+      post,
+      claims: (claims || []).map((c) => ({
+        ...c,
+        claimer_name: usersById[c.claimer_user_id]?.full_name || "Claimer",
+        claimer_email: usersById[c.claimer_user_id]?.email || ""
+      }))
+    });
+  } catch (err) {
+    console.error("Admin thread (post) error:", err);
+    return flashRedirect(req, res, "/admin", "error", "Failed to load thread.");
+  }
+});
+
+// ── Admin: View found claim thread ──
+app.get("/admin/threads/claim/:id", requireAdmin, async (req, res) => {
+  try {
+    const claimId = Number(req.params.id);
+    const { data: claim } = await supabase.from("found_claims").select("*").eq("id", claimId).maybeSingle();
+    if (!claim) return res.status(404).render("not_found");
+
+    const { data: post } = await supabase.from("found_posts").select("*").eq("id", claim.found_post_id).maybeSingle();
+    if (!post) return res.status(404).render("not_found");
+
+    const { data: rows } = await supabase
+      .from("found_claim_messages")
+      .select("id, sender_user_id, message, created_at")
+      .eq("claim_id", claimId)
       .order("created_at", { ascending: true });
 
     const messages = rows || [];
@@ -1867,15 +2130,15 @@ app.get("/admin/threads/post/:id", requireAdmin, async (req, res) => {
     }
 
     res.render("admin_thread", {
-      threadType: "post",
+      threadType: "claim",
       title: post.item_name || "Unknown Item",
-      subtitle: `Found post by ${post.finder_name || "Unknown"}`,
+      subtitle: `Claim thread — ${claim.status}`,
       image: post.image_url || null,
-      backUrl: "/admin",
+      backUrl: `/admin/threads/post/${post.id}`,
       messages: messages.map(m => ({ ...m, sender_name: senderMap[m.sender_user_id] || "User" }))
     });
   } catch (err) {
-    console.error("Admin thread (post) error:", err);
+    console.error("Admin thread (claim) error:", err);
     return flashRedirect(req, res, "/admin", "error", "Failed to load thread.");
   }
 });
@@ -1889,11 +2152,11 @@ app.post("/admin/messages/report/:id/delete", requireAdmin, async (req, res) => 
   return flashRedirect(req, res, back, "success", "Message deleted.");
 });
 
-app.post("/admin/messages/post/:id/delete", requireAdmin, async (req, res) => {
+app.post("/admin/messages/claim/:id/delete", requireAdmin, async (req, res) => {
   const msgId = Number(req.params.id);
-  const { data: msg } = await supabase.from("found_post_messages").select("found_post_id").eq("id", msgId).maybeSingle();
-  await supabase.from("found_post_messages").delete().eq("id", msgId);
-  const back = msg ? `/admin/threads/post/${msg.found_post_id}` : "/admin";
+  const { data: msg } = await supabase.from("found_claim_messages").select("claim_id").eq("id", msgId).maybeSingle();
+  await supabase.from("found_claim_messages").delete().eq("id", msgId);
+  const back = msg ? `/admin/threads/claim/${msg.claim_id}` : "/admin";
   return flashRedirect(req, res, back, "success", "Message deleted.");
 });
 
