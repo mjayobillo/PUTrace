@@ -2022,6 +2022,18 @@ app.post("/admin/reports/:id/delete", requireAdmin, async (req, res) => {
   return flashRedirect(req, res, "/admin", "success", "Report deleted.");
 });
 
+// Admin: Delete lost board item
+app.post("/admin/items/:id/delete", requireAdmin, async (req, res) => {
+  const { data: item } = await supabase.from("items").select("id, item_name, image_url").eq("id", req.params.id).maybeSingle();
+  if (!item) return flashRedirect(req, res, "/admin", "error", "Item not found.");
+  if (item.image_url) {
+    const fileName = item.image_url.split("/").pop().split("?")[0];
+    await supabase.storage.from("item-images").remove([fileName]);
+  }
+  await supabase.from("items").delete().eq("id", item.id);
+  return flashRedirect(req, res, "/admin", "success", "Lost item deleted.");
+});
+
 // ── Admin: View sighting report thread ──
 app.get("/admin/threads/report/:id", requireAdmin, async (req, res) => {
   try {

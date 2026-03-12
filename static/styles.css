@@ -704,6 +704,7 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
 .admin-table th {
   text-align: left;
