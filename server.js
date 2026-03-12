@@ -513,6 +513,23 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+// ── Availability checks (username/email) ──
+
+app.get("/api/check-username", async (req, res) => {
+  const username = normalizeUsername(req.query.username || "");
+  if (!isValidUsername(username)) return res.json({ available: false, reason: "invalid" });
+  const { data } = await supabase.from("users").select("id").eq("username", username).maybeSingle();
+  return res.json({ available: !data });
+});
+
+app.get("/api/check-email", async (req, res) => {
+  const email = normalizeSchoolEmailInput(req.query.email || "");
+  if (!isValidEmail(email)) return res.json({ available: false, reason: "invalid" });
+  if (!isSchoolEmail(email)) return res.json({ available: false, reason: "domain" });
+  const { data } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
+  return res.json({ available: !data });
+});
+
 // ── Login / Logout ──
 
 app.get("/login", (req, res) => res.render("login", { loginConfirmed: false, redirectTo: req.query.redirect || "" }));
@@ -562,6 +579,80 @@ app.post("/login", async (req, res) => {
     console.error("Login error:", err);
     setFlash(req, "error", "Something went wrong.");
     return res.redirect("/login");
+  }
+});
+
+// Resend email verification link
+app.post("/resend-verification", async (req, res) => {
+  try {
+    const identifierRaw = sanitize(req.body.identifier || req.body.email || "");
+    if (!identifierRaw) {
+      const message = "Enter your username or school email.";
+      if (String(req.headers.accept || "").includes("application/json")) {
+        return res.json({ ok: false, message });
+      }
+      return flashRedirect(req, res, "/login", "error", message);
+    }
+
+    const normalizedKey = identifierRaw.includes("@")
+      ? normalizeSchoolEmailInput(identifierRaw)
+      : normalizeUsername(identifierRaw);
+
+    const now = Date.now();
+    const cooldownMs = 60 * 1000;
+    const lastMap = req.session.lastVerifyResend || {};
+    const lastKey = String(normalizedKey || "").toLowerCase();
+    const lastAt = lastMap[lastKey] || 0;
+    if (now - lastAt < cooldownMs) {
+      const message = "Please wait a minute before requesting another verification email.";
+      if (String(req.headers.accept || "").includes("application/json")) {
+        return res.json({ ok: false, message, cooldown: Math.ceil((cooldownMs - (now - lastAt)) / 1000) });
+      }
+      return flashRedirect(req, res, "/login", "error", message);
+    }
+
+    const lookupQuery = identifierRaw.includes("@")
+      ? supabase.from("users").select("id, email, username, email_verified").eq("email", normalizeSchoolEmailInput(identifierRaw))
+      : supabase.from("users").select("id, email, username, email_verified").eq("username", normalizeUsername(identifierRaw));
+    const { data: user } = await lookupQuery.maybeSingle();
+
+    if (!user) {
+      lastMap[lastKey] = now;
+      req.session.lastVerifyResend = lastMap;
+      const message = "If the account exists and isn’t verified, we sent a new verification email.";
+      if (String(req.headers.accept || "").includes("application/json")) {
+        return res.json({ ok: true, message });
+      }
+      return flashRedirect(req, res, "/login", "success", message);
+    }
+
+    if (user.email_verified) {
+      lastMap[lastKey] = now;
+      req.session.lastVerifyResend = lastMap;
+      const message = "Your email is already verified. You can log in.";
+      if (String(req.headers.accept || "").includes("application/json")) {
+        return res.json({ ok: true, message });
+      }
+      return flashRedirect(req, res, "/login", "success", message);
+    }
+
+    const rawToken = await createEmailVerificationToken(user.id);
+    await sendEmailVerificationEmail(user.email, buildVerifyEmailLink(rawToken), user.username || "there");
+
+    lastMap[lastKey] = now;
+    req.session.lastVerifyResend = lastMap;
+    const message = "Verification email sent. Check your inbox or spam folder.";
+    if (String(req.headers.accept || "").includes("application/json")) {
+      return res.json({ ok: true, message });
+    }
+    return flashRedirect(req, res, "/login", "success", message);
+  } catch (err) {
+    console.error("Resend verification error:", err);
+    const message = "Something went wrong. Please try again.";
+    if (String(req.headers.accept || "").includes("application/json")) {
+      return res.json({ ok: false, message });
+    }
+    return flashRedirect(req, res, "/login", "error", message);
   }
 });
 
@@ -1496,7 +1587,7 @@ app.get("/messages", requireAuth, async (req, res) => {
     const allItemIds = [...new Set(reports.map((r) => r.item_id))];
     let itemsById = {};
     if (allItemIds.length > 0) {
-      const { data: items } = await supabase.from("items").select("id, item_name, user_id").in("id", allItemIds);
+      const { data: items } = await supabase.from("items").select("id, item_name, user_id, image_url").in("id", allItemIds);
       itemsById = Object.fromEntries((items || []).map((i) => [i.id, i]));
     }
 

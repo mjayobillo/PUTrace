@@ -2,11 +2,26 @@
 <%- include('_header') %>
 
 <section class="card">
-  <div class="section-head">
-    <h2 class="section-title"><%= post.item_name %></h2>
+  <div class="section-head" style="margin-bottom: 1rem; align-items: flex-start;">
+    <div style="display:flex; gap:1rem; align-items:flex-start; flex:1;">
+      <% if (post.image_url) { %>
+        <img src="<%= post.image_url %>" alt="<%= post.item_name %>" style="width:72px; height:72px; object-fit:cover; border-radius:8px; cursor:pointer;" data-img="<%= post.image_url %>" data-label="<%= post.item_name %>" onclick="showChatImg(this.dataset.img, this.dataset.label)">
+      <% } else { %>
+        <div style="width:72px; height:72px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#ccc;">?</div>
+      <% } %>
+      <div>
+        <h2 class="section-title" style="margin-bottom:0.2rem;"><%= post.item_name %></h2>
+        <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
+          <span class="badge badge-open"><%= post.category || 'Other' %></span>
+        </div>
+        <% if (post.item_description) { %>
+          <p style="font-size:0.85rem; color:#666; margin-bottom:0;"><%= post.item_description %></p>
+        <% } %>
+      </div>
+    </div>
     <a href="/messages" class="button btn-sm btn-outline">Back to Messages</a>
   </div>
-  <p class="muted">Chat with: <strong><%= counterpartName %></strong></p>
+  <p class="muted" style="margin-top: 1rem;">Chat with: <strong><%= counterpartName %></strong></p>
   <p class="muted" style="font-size:0.85rem;">Confirm ownership and arrange pickup below.</p>
   <% if (isFinder && claim.status === 'open' && post.status !== 'returned') { %>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
@@ -48,7 +63,21 @@
   <% } %>
 </section>
 
+<div id="chatImgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;" onclick="this.style.display='none'">
+  <div style="max-width:90vw;max-height:90vh;text-align:center;">
+    <img id="chatImgEl" src="" alt="" style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    <p id="chatImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
+  </div>
+</div>
+
 <script>
+  function showChatImg(src, label) {
+    document.getElementById('chatImgEl').src = src;
+    document.getElementById('chatImgEl').alt = label || 'Item image';
+    document.getElementById('chatImgLabel').textContent = label || '';
+    document.getElementById('chatImgModal').style.display = 'flex';
+  }
+
   (function () {
     var thread = document.getElementById('found-claim-thread');
     var form = document.getElementById('found-claim-message-form');

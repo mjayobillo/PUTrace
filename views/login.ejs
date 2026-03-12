@@ -18,7 +18,7 @@
     <input type="hidden" name="redirectTo" value="<%= (typeof redirectTo !== 'undefined' && redirectTo) ? redirectTo : '' %>" />
     <label>Username or School Email
       <div class="input-wrap">
-        <input type="text" name="identifier" required placeholder="juan123 or name@panpacificu.edu.ph" autocapitalize="none" autocomplete="username" spellcheck="false" />
+        <input type="text" name="identifier" id="loginIdentifier" required placeholder="juan123 or name@panpacificu.edu.ph" autocapitalize="none" autocomplete="username" spellcheck="false" />
       </div>
     </label>
     <label>Password
@@ -29,7 +29,68 @@
     </label>
     <button type="submit" id="login-submit-btn">Sign In</button>
   </form>
+  <div style="margin-top:0.75rem;">
+    <button type="button" class="button btn-outline btn-sm" id="resendVerifyBtn">Resend verification email</button>
+    <span class="field-hint" id="resendVerifyHint"></span>
+  </div>
   <p class="center-text form-link"><a href="/forgot-password">Forgot password?</a></p>
   <p class="center-text form-link-sub">Don't have an account? <a href="/signup">Sign up</a></p>
 </section>
+
+<script>
+  (function () {
+    var btn = document.getElementById('resendVerifyBtn');
+    var hint = document.getElementById('resendVerifyHint');
+    var input = document.getElementById('loginIdentifier');
+
+    function setHint(message, tone) {
+      if (!hint) return;
+      hint.textContent = message || '';
+      hint.className = 'field-hint' + (tone ? ' is-' + tone : '');
+    }
+
+    function setCooldown(seconds) {
+      if (!btn) return;
+      btn.disabled = true;
+      var remaining = seconds;
+      btn.textContent = 'Resend in ' + remaining + 's';
+      var timer = window.setInterval(function () {
+        remaining -= 1;
+        if (remaining <= 0) {
+          window.clearInterval(timer);
+          btn.disabled = false;
+          btn.textContent = 'Resend verification email';
+          return;
+        }
+        btn.textContent = 'Resend in ' + remaining + 's';
+      }, 1000);
+    }
+
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var value = (input && input.value || '').trim();
+        if (!value) {
+          setHint('Enter your username or school email first.', 'warn');
+          return;
+        }
+        setHint('Sending verification email...', 'muted');
+        fetch('/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+          body: 'identifier=' + encodeURIComponent(value)
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data) return;
+            setHint(data.message || 'Done.', data.ok === false ? 'bad' : 'good');
+            if (data.cooldown) setCooldown(data.cooldown);
+            else if (data.ok !== false) setCooldown(60);
+          })
+          .catch(function () {
+            setHint('Something went wrong. Please try again.', 'bad');
+          });
+      });
+    }
+  })();
+</script>
 <%- include('_footer') %>
