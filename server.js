@@ -397,7 +397,7 @@ async function getAccessibleReportContext(req, res, reportId) {
     .maybeSingle();
   if (!report) return { error: "not_found" };
 
-  const { data: item } = await supabase.from("items").select("id, user_id, item_name").eq("id", report.item_id).maybeSingle();
+  const { data: item } = await supabase.from("items").select("id, user_id, item_name, image_url, item_description, category").eq("id", report.item_id).maybeSingle();
   if (!item) return { error: "not_found" };
 
   const { data: owner } = await supabase.from("users").select("id, full_name, email").eq("id", item.user_id).maybeSingle();
@@ -1521,6 +1521,7 @@ app.get("/messages", requireAuth, async (req, res) => {
           id: r.id,
           url: `/messages/${r.id}`,
           item_name: item.item_name,
+          image_url: item.image_url,
           preview: latestMsgMap[r.id]?.message || r.message,
           status: r.status,
           kind: 'report',
@@ -1559,7 +1560,7 @@ app.get("/messages", requireAuth, async (req, res) => {
     if (claimPostIds.length > 0) {
       const { data: posts } = await supabase
         .from("found_posts")
-        .select("id, item_name, finder_user_id, finder_name, status, created_at")
+        .select("id, item_name, finder_user_id, finder_name, status, created_at, image_url")
         .in("id", claimPostIds);
       postsById = Object.fromEntries((posts || []).map((p) => [p.id, p]));
     }
@@ -1592,6 +1593,7 @@ app.get("/messages", requireAuth, async (req, res) => {
         id: c.id,
         url: `/found-claims/${c.id}`,
         item_name: post.item_name,
+        image_url: post.image_url,
         preview: lastMsg?.message || "Claim initiated",
         status: post.status === "returned" ? "returned" : c.status,
         kind: 'found',

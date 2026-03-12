@@ -2,11 +2,26 @@
 <%- include('_header') %>
 
 <section class="card">
-  <div class="section-head">
-    <h2 class="section-title"><%= item.item_name %></h2>
+  <div class="section-head" style="margin-bottom: 1rem; align-items: flex-start;">
+    <div style="display:flex; gap:1rem; align-items:flex-start; flex:1;">
+      <% if (item.image_url) { %>
+        <img src="<%= item.image_url %>" alt="<%= item.item_name %>" style="width:72px; height:72px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="window.open('<%= item.image_url %>', '_blank')">
+      <% } else { %>
+        <div style="width:72px; height:72px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#ccc;">?</div>
+      <% } %>
+      <div>
+        <h2 class="section-title" style="margin-bottom:0.2rem;"><%= item.item_name %></h2>
+        <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
+          <span class="badge badge-open"><%= item.category || 'Other' %></span>
+        </div>
+        <% if (item.item_description) { %>
+          <p style="font-size:0.85rem; color:#666; margin-bottom:0;"><%= item.item_description %></p>
+        <% } %>
+      </div>
+    </div>
     <a href="/messages" class="button btn-sm btn-outline">Back to Messages</a>
   </div>
-  <p class="muted">Chat with: <%= counterpartName %></p>
+  <p class="muted" style="margin-top: 1rem;">Chat with: <%= counterpartName %></p>
   <p class="muted"><small>Original report: <%= report.message %></small></p>
 </section>
 
