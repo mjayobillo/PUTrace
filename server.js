@@ -2404,6 +2404,26 @@ app.get("/download/:token", requireAuth, async (req, res) => {
   res.send(imgBuffer);
 });
 
+// ── Global Error Handlers ──
+
+// 404 Catch-All
+app.use((req, res, next) => {
+  res.status(404).render("404");
+});
+
+// 500 Catch-All (Multer errors, unhandled exceptions)
+app.use((err, req, res, next) => {
+  console.error("Global error handler caught:", err);
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      setFlash(req, "error", "File too large. Maximum size is 5MB.");
+      return res.redirect("back");
+    }
+  }
+  setFlash(req, "error", "An unexpected error occurred. Please try again.");
+  res.redirect(req.session?.userId ? "/dashboard" : "/");
+});
+
 // ── Start the server ──
 
 app.listen(PORT, () => {
