@@ -1602,6 +1602,32 @@ app.post("/found-claims/:claimId", requireAuth, async (req, res) => {
     if (text.length > 1000) return flashRedirect(req, res, `/found-claims/${claimId}`, "error", "Message too long (max 1000 chars).");
 
     await supabase.from("found_claim_messages").insert({ claim_id: claimId, sender_user_id: userId, message: text });
+
+    // Fire & forget email notification
+    (async () => {
+      try {
+        const recipientUserId = userId === post.finder_user_id ? claim.claimer_user_id : post.finder_user_id;
+        const { data: recipient } = await supabase.from("users").select("email, full_name").eq("id", recipientUserId).maybeSingle();
+        const { data: sender } = await supabase.from("users").select("full_name").eq("id", userId).maybeSingle();
+        
+        if (recipient && recipient.email) {
+          const senderName = sender ? sender.full_name : "Someone";
+          await sendEmail(
+            recipient.email,
+            `New message regarding found item: ${post.item_name}`,
+            `<h2 style="margin:0 0 16px;font-size:1.2rem;">New Message</h2>
+             <p>Hi <strong>${recipient.full_name}</strong>,</p>
+             <p>You have a new message from <strong>${senderName}</strong> regarding your claim for the found item: <strong>${post.item_name}</strong>.</p>
+             <p style="margin:20px 0;">
+               <a href="${BASE_URL}/found-claims/${claimId}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">View Message & Reply</a>
+             </p>`
+          );
+        }
+      } catch (err) {
+        console.error("Failed to send message notification for claim:", err);
+      }
+    })();
+
     return res.redirect(`/found-claims/${claimId}`);
   } catch (err) {
     console.error("Found claim send error:", err);
@@ -1894,6 +1920,27 @@ app.post("/messages/:reportId", requireAuth, async (req, res) => {
       message: text
     });
     if (error) return flashRedirect(req, res, `/messages/${ctx.report.id}`, "error", "Failed to send message.");
+
+    // Fire & forget email notification
+    (async () => {
+      try {
+        const recipientEmail = ctx.isOwner ? ctx.report.finder_email : ctx.owner.email;
+        const recipientName = ctx.isOwner ? (ctx.report.finder_name || "Finder") : ctx.owner.full_name;
+        const senderName = ctx.currentUser.full_name;
+        await sendEmail(
+          recipientEmail,
+          `New message regarding: ${ctx.item.item_name}`,
+          `<h2 style="margin:0 0 16px;font-size:1.2rem;">New Message</h2>
+           <p>Hi <strong>${recipientName}</strong>,</p>
+           <p>You have a new message from <strong>${senderName}</strong> regarding the item: <strong>${ctx.item.item_name}</strong>.</p>
+           <p style="margin:20px 0;">
+             <a href="${BASE_URL}/messages/${ctx.report.id}" style="display:inline-block;background:#3a56e4;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;">View Message & Reply</a>
+           </p>`
+        );
+      } catch (err) {
+        console.error("Failed to send message notification for report:", err);
+      }
+    })();
 
     return res.redirect(`/messages/${ctx.report.id}`);
   } catch (err) {
