@@ -132,10 +132,10 @@
           var link = e.target.closest('a[href]');
           if (!link) return;
           var href = link.getAttribute('href');
-          // Skip anchors, javascript:, new tabs, confirm modals
+          // Skip anchors, javascript:, new tabs, confirm modals, and download links
           if (!href || href.startsWith('#') || href.startsWith('javascript:')
               || link.target === '_blank' || link.hasAttribute('data-confirm-modal')
-              || link.hasAttribute('download')) return;
+              || link.hasAttribute('download') || href.indexOf('/download/') !== -1) return;
           if (loader) loader.classList.add('active');
           document.body.classList.add('page-leaving');
         });
