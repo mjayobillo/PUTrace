@@ -458,18 +458,22 @@ button:active, .button:active { transform: translateY(0); box-shadow: 0 2px 8px 
 }
 .btn-danger:hover { box-shadow: 0 4px 16px rgba(231,76,60,0.35); }
 .btn-danger-block {
-  display: inline-block;
+  display: block;
+  width: 100%;
+  text-align: center;
   background: linear-gradient(135deg, #e74c3c, #c0392b);
   color: #fff;
   font-weight: 600;
-  font-size: 0.9rem;
-  padding: 0.6rem 1.4rem;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.4rem;
   border-radius: 8px;
   text-decoration: none;
   box-shadow: 0 2px 8px rgba(231,76,60,0.22);
   transition: box-shadow 0.18s, transform 0.18s;
+  cursor: pointer;
+  border: none;
 }
-.btn-danger-block:hover { box-shadow: 0 4px 16px rgba(231,76,60,0.38); transform: translateY(-1px); color: #fff; }
+.btn-danger-block:hover { box-shadow: 0 4px 16px rgba(231,76,60,0.38); transform: translateY(-1px); color: #fff; text-decoration: none; }
 .btn-success {
   background: linear-gradient(135deg, #27ae60, #1e8449);
   box-shadow: 0 2px 8px rgba(39,174,96,0.25);

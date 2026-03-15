@@ -1958,7 +1958,25 @@ app.post("/account", requireAuth, async (req, res) => {
     const full_name = sanitize(req.body.full_name);
     if (full_name.length < 2) { setFlash(req, "error", "Name is too short."); return res.redirect("/account"); }
 
-    const { error } = await supabase.from("users").update({ full_name }).eq("id", req.session.userId);
+    const updatePayload = { full_name };
+
+    // Handle username update if provided
+    if (req.body.username) {
+      const username = normalizeUsername(req.body.username);
+      if (!isValidUsername(username)) {
+        setFlash(req, "error", "Invalid username format. Use 3–30 lowercase letters, numbers, dots, or underscores.");
+        return res.redirect("/account");
+      }
+      
+      const { data: existing } = await supabase.from("users").select("id").eq("username", username).neq("id", req.session.userId).maybeSingle();
+      if (existing) {
+        setFlash(req, "error", "That username is already taken by someone else.");
+        return res.redirect("/account");
+      }
+      updatePayload.username = username;
+    }
+
+    const { error } = await supabase.from("users").update(updatePayload).eq("id", req.session.userId);
     setFlash(req, error ? "error" : "success", error ? "Update failed." : "Profile updated.");
     return res.redirect("/account");
   } catch (err) {

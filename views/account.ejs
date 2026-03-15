@@ -41,7 +41,13 @@
       <h3>Update Profile</h3>
       <form method="post" action="/account">
         <label>Full name <input name="full_name" value="<%= currentUser.full_name %>" required /></label>
-        <button type="submit" class="btn-sm">Save Changes</button>
+        <label>Username
+          <div class="input-wrap">
+            <input name="username" value="<%= currentUser.username %>" required pattern="^[a-zA-Z0-9._]+$" minlength="3" maxlength="30" autocapitalize="none" spellcheck="false" />
+          </div>
+          <span style="font-size:0.75rem; color:#888;">(3–30 lowercase letters, numbers, dots, or underscores)</span>
+        </label>
+        <button type="submit" class="button btn-sm btn-block" style="width:100%;margin-top:0.4rem;">Save Changes</button>
       </form>
 
       <hr style="margin:1.5rem 0;border:none;border-top:1px solid #f0f2f5;">
