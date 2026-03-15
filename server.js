@@ -60,8 +60,14 @@ function normalizeUsername(value) {
   return sanitize(value).toLowerCase();
 }
 
+const Filter = require("bad-words");
+const profanityFilter = new Filter();
+
 function isValidUsername(username) {
-  return /^[a-z0-9._]{3,30}$/.test(String(username || ""));
+  const strName = String(username || "");
+  if (!/^[a-z0-9._]{3,30}$/.test(strName)) return false;
+  if (profanityFilter.isProfane(strName)) return false;
+  return true;
 }
 
 // Generate a random token for QR codes
