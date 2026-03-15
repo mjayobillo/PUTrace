@@ -820,7 +820,16 @@ app.get("/auth/google/callback", async (req, res) => {
     }
     
     req.session.userId = userId;
-    return res.redirect("/dashboard");
+    
+    // Instead of redirecting the popup, we tell the main window to redirect and then close the popup.
+    return res.send(`
+      <script>
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage('google-auth-success', window.location.origin);
+        }
+        window.close();
+      </script>
+    `);
     
   } catch (err) {
     console.error("Google OAuth error:", err);
