@@ -740,7 +740,93 @@ app.post("/reset-password/:token", async (req, res) => {
     return flashRedirect(req, res, `/reset-password/${req.params.token}`, "error", "Something went wrong.");
   }
 });
+// ── Google OAuth ──
 
+app.get("/auth/google", (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID || "";
+  if (!clientId) return flashRedirect(req, res, "/login", "error", "Google login is currently disabled by the administrator (Missing credentials).");
+  
+  const redirectUri = `${BASE_URL}/auth/google/callback`;
+  const scope = "email profile";
+  // The 'hd' parameter forces Google to only allow the school domain on the selection screen
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&hd=${ALLOWED_EMAIL_DOMAIN}`;
+  
+  res.redirect(authUrl);
+});
+
+app.get("/auth/google/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.redirect("/login");
+    
+    const clientId = process.env.GOOGLE_CLIENT_ID || "";
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
+    const redirectUri = `${BASE_URL}/auth/google/callback`;
+    
+    // Exchange the code for an access token
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri
+      })
+    });
+    const tokens = await tokenResponse.json();
+    if (!tokenResponse.ok) throw new Error(tokens.error_description || "Failed to fetch token");
+    
+    // Use the token to fetch the user's profile and email
+    const userResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+    const profile = await userResponse.json();
+    if (!userResponse.ok) throw new Error(profile.error?.message || "Failed to fetch profile");
+    
+    const email = String(profile.email || "").toLowerCase();
+    const fullName = sanitize(profile.name || "Student");
+    
+    // SECURITY: Reject ANY email that doesn't belong to the school domain, even if Google allowed it
+    if (!isSchoolEmail(email)) {
+      return flashRedirect(req, res, "/login", "error", `You must use your @${ALLOWED_EMAIL_DOMAIN} account to log in.`);
+    }
+    
+    const { data: user } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
+    
+    let userId = null;
+    if (user) {
+      if (user.is_banned) return flashRedirect(req, res, "/login", "error", "Your account has been suspended. Contact an administrator.");
+      if (!user.email_verified) await supabase.from("users").update({ email_verified: true }).eq("id", user.id);
+      userId = user.id;
+    } else {
+      // Auto-register new users with a randomized username based on their email prefix
+      const baseUsername = email.split("@")[0].replace(/[^a-z0-9._]/g, "");
+      const { data: exists } = await supabase.from("users").select("id").eq("username", baseUsername).maybeSingle();
+      const finalUsername = exists ? `${baseUsername}_${Math.floor(Math.random() * 1000)}` : baseUsername;
+      
+      const dummyHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+      const { data: newUser, error } = await supabase.from("users").insert({
+        full_name: fullName,
+        username: finalUsername,
+        email: email,
+        password_hash: dummyHash,
+        email_verified: true
+      }).select("id").maybeSingle();
+      
+      if (error || !newUser) throw new Error("Could not create the account.");
+      userId = newUser.id;
+    }
+    
+    req.session.userId = userId;
+    return res.redirect("/dashboard");
+    
+  } catch (err) {
+    console.error("Google OAuth error:", err);
+    return flashRedirect(req, res, "/login", "error", "Failed to log in with Google. Please try again.");
+  }
+});
 app.get("/logout", (req, res) => {
   const redirect = req.query.redirect || "/";
   req.session.destroy(() => {

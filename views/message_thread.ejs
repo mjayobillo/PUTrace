@@ -1,148 +1,173 @@
 <!-- Page: report message thread  -->
 <%- include('_header') %>
 
-<section class="card">
-  <div class="section-head" style="margin-bottom: 1rem; align-items: flex-start;">
-    <div style="display:flex; gap:1rem; align-items:flex-start; flex:1;">
-      <% if (item.image_url) { %>
-        <img src="<%= item.image_url %>" alt="<%= item.item_name %>" style="width:72px; height:72px; object-fit:cover; border-radius:8px; cursor:pointer;" data-img="<%= item.image_url %>" data-label="<%= item.item_name %>" onclick="showChatImg(this.dataset.img, this.dataset.label)">
-      <% } else { %>
-        <div style="width:72px; height:72px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#ccc;">?</div>
-      <% } %>
-      <div>
-        <h2 class="section-title" style="margin-bottom:0.2rem;"><%= item.item_name %></h2>
-        <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
-          <span class="badge badge-open"><%= item.category || 'Other' %></span>
-        </div>
-        <% if (item.item_description) { %>
-          <p style="font-size:0.85rem; color:#666; margin-bottom:0;"><%= item.item_description %></p>
-        <% } %>
+  <section class="card">
+    <div class="section-head" style="margin-bottom: 1rem; align-items: flex-start;">
+      <div style="display:flex; gap:1rem; align-items:flex-start; flex:1;">
+        <% if (item.image_url) { %>
+          <img src="<%= item.image_url %>" alt="<%= item.item_name %>"
+            style="width:72px; height:72px; object-fit:cover; border-radius:8px; cursor:pointer;"
+            data-img="<%= item.image_url %>" data-label="<%= item.item_name %>"
+            onclick="showChatImg(this.dataset.img, this.dataset.label)">
+          <% } else { %>
+            <div
+              style="width:72px; height:72px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#ccc;">
+              ?</div>
+            <% } %>
+              <div>
+                <h2 class="section-title" style="margin-bottom:0.2rem;">
+                  <%= item.item_name %>
+                </h2>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
+                  <span class="badge badge-open">
+                    <%= item.category || 'Other' %>
+                  </span>
+                </div>
+                <% if (item.item_description) { %>
+                  <p style="font-size:0.85rem; color:#666; margin-bottom:0;">
+                    <%= item.item_description %>
+                  </p>
+                  <% } %>
+              </div>
       </div>
+      <a href="/messages" class="button btn-sm btn-outline">Back to Messages</a>
     </div>
-    <a href="/messages" class="button btn-sm btn-outline">Back to Messages</a>
+    <p class="muted" style="margin-top: 1rem;">Chat with: <%= counterpartName %>
+    </p>
+    <p class="muted"><small>Original report: <%= report.message %></small></p>
+  </section>
+
+  <section class="card">
+    <div class="chat-thread" id="report-chat-thread">
+      <% if (!messages || messages.length===0) { %>
+        <p class="muted" id="report-chat-empty">No messages yet. Start the conversation below.</p>
+        <% } else { %>
+          <% messages.forEach((m)=> { %>
+            <div class="chat-bubble <%= m.is_me ? 'mine' : 'theirs' %>">
+              <div class="chat-meta">
+                <%= m.is_me ? 'You' : m.sender_name %>
+              </div>
+              <div>
+                <%= m.message %>
+              </div>
+              <div class="chat-time"><small>
+                  <%= new Date(m.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila' , month: 'short' ,
+                    day: 'numeric' , hour: 'numeric' , minute: '2-digit' }) %>
+                </small></div>
+            </div>
+            <% }) %>
+              <% } %>
+    </div>
+
+    <% if (report.status==='resolved' ) { %>
+      <p class="muted" id="report-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">This report
+        has been resolved. The conversation is now closed.</p>
+      <% } else { %>
+        <p class="muted" id="report-closed-note"
+          style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">This report has been resolved. The
+          conversation is now closed.</p>
+        <form method="post" action="/messages/<%= report.id %>" id="report-message-form">
+          <label>Message
+            <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
+          </label>
+          <button type="submit" class="button btn-success">Send Message</button>
+        </form>
+        <% } %>
+  </section>
+
+  <div id="chatImgModal"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;"
+    onclick="this.style.display='none'">
+    <div style="max-width:90vw;max-height:90vh;text-align:center;">
+      <img id="chatImgEl" src="" alt=""
+        style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+      <p id="chatImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
+    </div>
   </div>
-  <p class="muted" style="margin-top: 1rem;">Chat with: <%= counterpartName %></p>
-  <p class="muted"><small>Original report: <%= report.message %></small></p>
-</section>
 
-<section class="card">
-  <div class="chat-thread" id="report-chat-thread">
-    <% if (!messages || messages.length === 0) { %>
-      <p class="muted" id="report-chat-empty">No messages yet. Start the conversation below.</p>
-    <% } else { %>
-      <% messages.forEach((m) => { %>
-        <div class="chat-bubble <%= m.is_me ? 'mine' : 'theirs' %>">
-          <div class="chat-meta"><%= m.is_me ? 'You' : m.sender_name %></div>
-          <div><%= m.message %></div>
-          <div class="chat-time"><small><%= new Date(m.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></small></div>
-        </div>
-      <% }) %>
-    <% } %>
-  </div>
-
-  <% if (report.status === 'resolved') { %>
-    <p class="muted" id="report-closed-note" style="text-align:center;padding:0.5rem 0;font-size:0.9rem;">This report has been resolved. The conversation is now closed.</p>
-  <% } else { %>
-  <p class="muted" id="report-closed-note" style="display:none;text-align:center;padding:0.5rem 0;font-size:0.9rem;">This report has been resolved. The conversation is now closed.</p>
-  <form method="post" action="/messages/<%= report.id %>" id="report-message-form">
-    <label>Message
-      <textarea name="message" rows="3" maxlength="1000" required placeholder="Type your message..."></textarea>
-    </label>
-    <button type="submit" class="button btn-success">Send Message</button>
-  </form>
-  <% } %>
-</section>
-
-<div id="chatImgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:center;justify-content:center;" onclick="this.style.display='none'">
-  <div style="max-width:90vw;max-height:90vh;text-align:center;">
-    <img id="chatImgEl" src="" alt="" style="max-width:100%;max-height:80vh;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
-    <p id="chatImgLabel" style="color:#fff;margin-top:0.75rem;font-size:0.95rem;"></p>
-  </div>
-</div>
-
-<script>
-  function showChatImg(src, label) {
-    document.getElementById('chatImgEl').src = src;
-    document.getElementById('chatImgEl').alt = label || 'Item image';
-    document.getElementById('chatImgLabel').textContent = label || '';
-    document.getElementById('chatImgModal').style.display = 'flex';
-  }
-
-  (function () {
-    var thread = document.getElementById('report-chat-thread');
-    var form = document.getElementById('report-message-form');
-    var closedNote = document.getElementById('report-closed-note');
-    var pollUrl = '/messages/<%= report.id %>/poll';
-    var previousCount = <%= messages.length %>;
-    var isPolling = false;
-
-    function escapeHtml(value) {
-      return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+  <script>
+    function showChatImg(src, label) {
+      document.getElementById('chatImgEl').src = src;
+      document.getElementById('chatImgEl').alt = label || 'Item image';
+      document.getElementById('chatImgLabel').textContent = label || '';
+      document.getElementById('chatImgModal').style.display = 'flex';
     }
 
-    function formatDate(value) {
-      return new Date(value).toLocaleString('en-US', {
-        timeZone: 'Asia/Manila',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
-      });
-    }
+    (function () {
+      var thread = document.getElementById('report-chat-thread');
+      var form = document.getElementById('report-message-form');
+      var closedNote = document.getElementById('report-closed-note');
+      var pollUrl = '/messages/<%= report.id %>/poll';
+      var previousCount = parseInt("<%= messages ? messages.length : 0 %>", 10) || 0;
+      var isPolling = false;
 
-    function renderMessages(messages) {
-      if (!thread) return;
-      if (!messages || messages.length === 0) {
-        thread.innerHTML = '<p class="muted" id="report-chat-empty">No messages yet. Start the conversation below.</p>';
-        return;
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
       }
 
-      thread.innerHTML = messages.map(function (m) {
-        return '<div class="chat-bubble ' + (m.is_me ? 'mine' : 'theirs') + '">' +
-          '<div class="chat-meta">' + escapeHtml(m.is_me ? 'You' : m.sender_name) + '</div>' +
-          '<div>' + escapeHtml(m.message) + '</div>' +
-          '<div class="chat-time"><small>' + escapeHtml(formatDate(m.created_at)) + '</small></div>' +
-        '</div>';
-      }).join('');
-    }
-
-    function syncStatus(status) {
-      var isClosed = status === 'resolved';
-      if (closedNote) closedNote.style.display = isClosed ? 'block' : 'none';
-      if (form) form.style.display = isClosed ? 'none' : '';
-    }
-
-    function stickToBottom() {
-      if (thread) thread.scrollTop = thread.scrollHeight;
-    }
-
-    async function poll() {
-      if (isPolling) return;
-      isPolling = true;
-      try {
-        var response = await fetch(pollUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-        if (!response.ok) return;
-        var payload = await response.json();
-        var messages = payload.messages || [];
-        var nearBottom = !thread || (thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80);
-        renderMessages(messages);
-        syncStatus(payload.status);
-        if (nearBottom || messages.length > previousCount) stickToBottom();
-        previousCount = messages.length;
-      } catch (err) {
-      } finally {
-        isPolling = false;
+      function formatDate(value) {
+        return new Date(value).toLocaleString('en-US', {
+          timeZone: 'Asia/Manila',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
       }
-    }
 
-    stickToBottom();
-    window.setInterval(poll, 4000);
-  })();
-</script>
+      function renderMessages(messages) {
+        if (!thread) return;
+        if (!messages || messages.length === 0) {
+          thread.innerHTML = '<p class="muted" id="report-chat-empty">No messages yet. Start the conversation below.</p>';
+          return;
+        }
 
-<%- include('_footer') %>
+        thread.innerHTML = messages.map(function (m) {
+          return '<div class="chat-bubble ' + (m.is_me ? 'mine' : 'theirs') + '">' +
+            '<div class="chat-meta">' + escapeHtml(m.is_me ? 'You' : m.sender_name) + '</div>' +
+            '<div>' + escapeHtml(m.message) + '</div>' +
+            '<div class="chat-time"><small>' + escapeHtml(formatDate(m.created_at)) + '</small></div>' +
+            '</div>';
+        }).join('');
+      }
+
+      function syncStatus(status) {
+        var isClosed = status === 'resolved';
+        if (closedNote) closedNote.style.display = isClosed ? 'block' : 'none';
+        if (form) form.style.display = isClosed ? 'none' : '';
+      }
+
+      function stickToBottom() {
+        if (thread) thread.scrollTop = thread.scrollHeight;
+      }
+
+      async function poll() {
+        if (isPolling) return;
+        isPolling = true;
+        try {
+          var response = await fetch(pollUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+          if (!response.ok) return;
+          var payload = await response.json();
+          var messages = payload.messages || [];
+          var nearBottom = !thread || (thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80);
+          renderMessages(messages);
+          syncStatus(payload.status);
+          if (nearBottom || messages.length > previousCount) stickToBottom();
+          previousCount = messages.length;
+        } catch (err) {
+        } finally {
+          isPolling = false;
+        }
+      }
+
+      stickToBottom();
+      window.setInterval(poll, 2000);
+    })();
+  </script>
+
+  <%- include('_footer') %>

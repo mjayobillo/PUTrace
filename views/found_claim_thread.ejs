@@ -83,7 +83,7 @@
     var form = document.getElementById('found-claim-message-form');
     var closedNote = document.getElementById('found-claim-closed-note');
     var pollUrl = '/found-claims/<%= claim.id %>/poll';
-    var previousCount = <%= messages.length %>;
+    var previousCount = parseInt("<%= messages ? messages.length : 0 %>", 10) || 0;
     var isPolling = false;
 
     function escapeHtml(value) {
@@ -151,7 +151,7 @@
     }
 
     stickToBottom();
-    window.setInterval(poll, 4000);
+    window.setInterval(poll, 2000);
   })();
 </script>
 
