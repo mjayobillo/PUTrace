@@ -94,6 +94,9 @@
     }
 
     (function () {
+      // ── Real-time chat polling ──
+      // Polls the server every 2 seconds to check for new messages or a resolved status.
+      // Uses a guard flag (isPolling) to avoid sending overlapping requests.
       var thread = document.getElementById('report-chat-thread');
       var form = document.getElementById('report-message-form');
       var closedNote = document.getElementById('report-closed-note');
@@ -101,6 +104,8 @@
       var previousCount = parseInt("<%= messages ? messages.length : 0 %>", 10) || 0;
       var isPolling = false;
 
+      // Escapes special HTML characters before inserting dynamic content via innerHTML
+      // to prevent cross-site scripting (XSS) attacks.
       function escapeHtml(value) {
         return String(value || '')
           .replace(/&/g, '&amp;')
@@ -110,6 +115,7 @@
           .replace(/'/g, '&#39;');
       }
 
+      // Converts an ISO timestamp into an easy-to-read local time string.
       function formatDate(value) {
         return new Date(value).toLocaleString('en-US', {
           timeZone: 'Asia/Manila',
@@ -120,6 +126,7 @@
         });
       }
 
+      // Replaces the entire chat thread HTML with freshly rendered message bubbles.
       function renderMessages(messages) {
         if (!thread) return;
         if (!messages || messages.length === 0) {
@@ -136,16 +143,19 @@
         }).join('');
       }
 
+      // Shows the "conversation closed" notice and hides the reply form when resolved.
       function syncStatus(status) {
         var isClosed = status === 'resolved';
         if (closedNote) closedNote.style.display = isClosed ? 'block' : 'none';
         if (form) form.style.display = isClosed ? 'none' : '';
       }
 
+      // Scrolls the thread container to the bottom so the newest message is always in view.
       function stickToBottom() {
         if (thread) thread.scrollTop = thread.scrollHeight;
       }
 
+      // Fetches the latest messages and report status from the server.
       async function poll() {
         if (isPolling) return;
         isPolling = true;
@@ -166,7 +176,7 @@
       }
 
       stickToBottom();
-      window.setInterval(poll, 2000);
+      window.setInterval(poll, 2000); // Poll every 2 seconds for near-realtime updates
     })();
   </script>
 

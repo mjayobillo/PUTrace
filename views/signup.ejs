@@ -65,6 +65,8 @@
 
 <script>
   (function () {
+    // ── Real-time username & email availability checker ──
+    // Grabs the input fields, hint spans, and submit button we'll be controlling.
     var usernameInput = document.getElementById('signupUsername');
     var emailInput = document.getElementById('signupEmail');
     var usernameHint = document.getElementById('usernameHint');
@@ -74,6 +76,7 @@
 
     var submitBtn = document.querySelector('#signupForm button[type="submit"]');
 
+    // Locks/unlocks the submit button based on whether any hint is in a bad or warning state.
     function checkFormValidity() {
       if (!submitBtn) return;
       var uBad = usernameHint && (usernameHint.className.indexOf('is-bad') !== -1 || usernameHint.className.indexOf('is-warn') !== -1);
@@ -88,6 +91,8 @@
       }
     }
 
+    // Updates a hint element with a message and tone class (good/bad/warn/muted),
+    // then re-checks if the form should be locked.
     function setHint(el, message, tone) {
       if (!el) return;
       el.textContent = message || '';
@@ -95,11 +100,14 @@
       checkFormValidity();
     }
 
+    // Waits for the user to stop typing before firing the check (350ms delay)
+    // to avoid spamming the server with a request on every keystroke.
     function debounce(fn, delay, store) {
       if (store.timer) window.clearTimeout(store.timer);
       store.timer = window.setTimeout(fn, delay);
     }
 
+    // Hits the server API to check if the username is available and valid.
     function checkUsername() {
       var value = (usernameInput && usernameInput.value || '').trim();
       if (!value) return setHint(usernameHint, '', '');
@@ -109,12 +117,14 @@
         .then(function (data) {
           if (!data) return;
           if (data.available) return setHint(usernameHint, 'Username is available', 'good');
-          if (data.reason === 'invalid') return setHint(usernameHint, 'Use 3–30 lowercase letters, numbers, dots, or underscores', 'warn');
+          if (data.reason === 'invalid') return setHint(usernameHint, 'Use 3–30 lowercase letters, numbers, dots, or underscores (Profanity blocked)', 'warn');
           setHint(usernameHint, 'Username is already taken', 'bad');
         })
         .catch(function () {});
     }
 
+    // Hits the server API to check if the email is available.
+    // Automatically appends the school domain before sending if the user only typed a prefix.
     function checkEmail() {
       var value = (emailInput && emailInput.value || '').trim();
       if (!value) return setHint(emailHint, '', '');
@@ -132,22 +142,8 @@
         .catch(function () {});
     }
 
-    var submitBtn = document.querySelector('#signupForm button[type="submit"]');
 
-    function checkFormValidity() {
-      if (!submitBtn) return;
-      var uBad = usernameHint && (usernameHint.className.indexOf('is-bad') !== -1 || usernameHint.className.indexOf('is-warn') !== -1);
-      var eBad = emailHint && (emailHint.className.indexOf('is-bad') !== -1 || emailHint.className.indexOf('is-warn') !== -1);
-      submitBtn.disabled = uBad || eBad;
-      if (uBad || eBad) {
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
-      } else {
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-      }
-    }
-
+    // Attach debounced listeners: fire API check 350ms after typing stops, and immediately on blur.
     if (usernameInput) {
       usernameInput.addEventListener('input', function () {
         debounce(checkUsername, 350, { get timer() { return usernameTimer; }, set timer(v) { usernameTimer = v; } });
@@ -161,7 +157,8 @@
       });
       emailInput.addEventListener('blur', checkEmail);
     }
-    
+
+    // Final safety net: block form submission even if JS hints were somehow bypassed.
     var signupForm = document.getElementById('signupForm');
     if (signupForm) {
       signupForm.addEventListener('submit', function (e) {

@@ -16,7 +16,18 @@ require("dotenv").config();
 
 // ── Setup ──
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed (JPEG, PNG, WEBP, GIF)."));
+    }
+  }
+});
 const app = express();
 const PORT = process.env.PORT || 5000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
@@ -49,6 +60,8 @@ function isSchoolEmail(email) {
   return isValidEmail(normalized) && normalized.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
+// Accept either a full email or just the prefix — append the school domain if missing
+// e.g., "juan" → "juan@panpacificu.edu.ph", "juan@panpacificu.edu.ph" → unchanged
 function normalizeSchoolEmailInput(value) {
   const normalized = sanitize(value).toLowerCase();
   if (!normalized) return "";
@@ -56,6 +69,7 @@ function normalizeSchoolEmailInput(value) {
   return `${normalized}@${ALLOWED_EMAIL_DOMAIN}`;
 }
 
+// Usernames are always stored and compared in lowercase
 function normalizeUsername(value) {
   return sanitize(value).toLowerCase();
 }
@@ -63,6 +77,8 @@ function normalizeUsername(value) {
 const Filter = require("bad-words");
 const profanityFilter = new Filter();
 
+// Validates username rules: 3–30 chars, only lowercase letters/numbers/dots/underscores,
+// and must not contain profanity (checked via the bad-words library)
 function isValidUsername(username) {
   const strName = String(username || "");
   if (!/^[a-z0-9._]{3,30}$/.test(strName)) return false;
@@ -80,10 +96,12 @@ function hashToken(token) {
   return crypto.createHash("sha256").update(String(token || "")).digest("hex");
 }
 
+// Builds the full clickable password reset URL sent in the reset email
 function buildResetLink(token) {
   return `${BASE_URL}/reset-password/${token}`;
 }
 
+// Builds the full clickable email verification URL sent after signup
 function buildVerifyEmailLink(token) {
   return `${BASE_URL}/verify-email/${token}`;
 }
@@ -171,6 +189,8 @@ async function sendEmailVerificationEmail(email, verifyLink, username) {
      <p style="color:#888;font-size:0.87rem;">If you don't see the email in your inbox, please check your spam or junk folder.</p>`);
 }
 
+// Looks up a password reset token by its hashed value.
+// Returns the token record only if it hasn't been used and hasn't expired.
 async function getValidResetTokenRecord(rawToken) {
   const tokenHash = hashToken(rawToken);
   const nowIso = new Date().toISOString();
@@ -178,14 +198,16 @@ async function getValidResetTokenRecord(rawToken) {
     .from("password_reset_tokens")
     .select("id, user_id, expires_at, used_at, created_at")
     .eq("token_hash", tokenHash)
-    .is("used_at", null)
-    .gt("expires_at", nowIso)
+    .is("used_at", null)       // Token must not have been used already
+    .gt("expires_at", nowIso)  // Token must not be expired (30-minute window)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   return data || null;
 }
 
+// Looks up an email verification token by its hashed value.
+// Returns the token record only if it hasn't been used and hasn't expired.
 async function getValidEmailVerificationTokenRecord(rawToken) {
   const tokenHash = hashToken(rawToken);
   const nowIso = new Date().toISOString();
@@ -193,8 +215,8 @@ async function getValidEmailVerificationTokenRecord(rawToken) {
     .from("email_verification_tokens")
     .select("id, user_id, expires_at, used_at, created_at")
     .eq("token_hash", tokenHash)
-    .is("used_at", null)
-    .gt("expires_at", nowIso)
+    .is("used_at", null)       // Token must not have been used already
+    .gt("expires_at", nowIso)  // Token must not be expired (24-hour window)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -224,16 +246,19 @@ async function uploadImage(fileBuffer, prefix) {
   return data.publicUrl;
 }
 
+// Generates a 32-byte random verification token, stores its SHA-256 hash in the DB
+// (so the raw token is never stored — only the hash), and returns the raw token
+// to be embedded in the verification link sent to the user's email.
 async function createEmailVerificationToken(userId) {
   const rawToken = crypto.randomBytes(32).toString("hex");
-  const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const tokenHash = hashToken(rawToken);  // Only the hash is stored, not the raw token
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
   await supabase.from("email_verification_tokens").insert({
     user_id: userId,
     token_hash: tokenHash,
     expires_at: expiresAt
   });
-  return rawToken;
+  return rawToken; // Returned to be sent in the email link
 }
 
 // ── Express Config ──
@@ -253,7 +278,12 @@ app.use(
 
 // ── Middleware ──
 
-// Load current user and flash messages for every page
+// ── Per-request middleware ──
+// Runs on every incoming request to:
+//  1. Load the logged-in user from the DB (if a session exists) and expose it as res.locals.currentUser
+//  2. Expose flash messages (one-time success/error banners) consumed by the header partial
+//  3. Compute the unread message count shown in the navigation badge
+//     (uses session-stored timestamps to compare when the user last opened each thread)
 app.use(async (req, res, next) => {
   res.locals.currentUser = null;
   res.locals.flash = req.session.flash || null;
@@ -350,13 +380,15 @@ function flashRedirect(req, res, path, type, message) {
   return res.redirect(path);
 }
 
+// Converts a raw DB message row into a safe shape for the view/JSON poll response.
+// The `is_me` flag lets the template render the message bubble on the correct side.
 function serializeChatMessage(message, currentUserId) {
   return {
     id: message.id,
     sender_name: message.sender_name || "User",
     message: message.message,
     created_at: message.created_at,
-    is_me: message.sender_user_id === currentUserId
+    is_me: message.sender_user_id === currentUserId // true → right-side bubble, false → left-side
   };
 }
 
@@ -807,11 +839,15 @@ app.get("/auth/google/callback", async (req, res) => {
       if (!user.email_verified) await supabase.from("users").update({ email_verified: true }).eq("id", user.id);
       userId = user.id;
     } else {
-      // Auto-register new users with a randomized username based on their email prefix
+      // First-time Google login: auto-create a PUTrace account for this school email.
+      // Username is derived from the email prefix (e.g., "juan.delacruz" from the email).
+      // If that username is already taken, a random 3-digit suffix is appended.
       const baseUsername = email.split("@")[0].replace(/[^a-z0-9._]/g, "");
       const { data: exists } = await supabase.from("users").select("id").eq("username", baseUsername).maybeSingle();
       const finalUsername = exists ? `${baseUsername}_${Math.floor(Math.random() * 1000)}` : baseUsername;
-      
+
+      // A random, unguessable string is hashed and stored as the password placeholder.
+      // Google-authenticated users never need to type a password, but the column is NOT NULL.
       const dummyHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
       const { data: newUser, error } = await supabase.from("users").insert({
         full_name: fullName,
@@ -918,22 +954,28 @@ app.get("/dashboard", requireAuth, async (req, res) => {
       claimersById = Object.fromEntries((users || []).map((u) => [u.id, u.full_name]));
     }
 
+    // Build the found-item activity list shown on the dashboard.
+    // Each entry is a claim the current user is involved in, enriched with:
+    //  - the post's item name
+    //  - the user's role ("claimer" if they claimed the item, "finder" if they posted it)
+    //  - the other party's name for display
+    //  - the effective status (if the post is "returned", that overrides the claim status)
     const enrichedFoundActivity = (claimRows || []).map((c) => {
       const post = postsById[c.found_post_id];
-      if (!post) return null;
+      if (!post) return null; // Skip orphaned claims where the post was deleted
       const isClaimer = c.claimer_user_id === req.session.userId;
       const otherName = isClaimer
-        ? (post.finder_name || "Finder")
-        : (claimersById[c.claimer_user_id] || "Claimer");
+        ? (post.finder_name || "Finder")               // Claimer sees the finder's name
+        : (claimersById[c.claimer_user_id] || "Claimer"); // Finder sees the claimer's name
       return {
         id: c.id,
         item_name: post.item_name,
-        status: post.status === "returned" ? "returned" : c.status,
+        status: post.status === "returned" ? "returned" : c.status, // Post status takes priority
         role: isClaimer ? "claimer" : "finder",
         other_name: otherName,
         created_at: c.created_at
       };
-    }).filter(Boolean);
+    }).filter(Boolean); // Remove any nulls from deleted posts
 
     // Count open reports per item
     const itemNameMap = Object.fromEntries(filteredItems.map((i) => [i.id, i.item_name]));
@@ -963,7 +1005,8 @@ app.get("/items/new", requireAuth, (req, res) => {
   res.render("new_item", { categories: CATEGORIES });
 });
 
-// Shared handler so old and new form actions both work
+// Shared item registration handler — mounted on both POST /items/new and POST /dashboard
+// so existing links to both form actions continue to work without duplication.
 async function handleRegisterItem(req, res) {
   try {
     const item_name = sanitize(req.body.item_name);
@@ -1665,6 +1708,9 @@ app.get("/messages", requireAuth, async (req, res) => {
       .order("created_at", { ascending: false });
     const finderReports = finderReportsData || [];
 
+    // Deduplicate: a user could appear in both ownerReports and finderReports
+    // for the same report (e.g., if they somehow matched both). The Map keyed
+    // on report ID ensures each report only appears once in the messages list.
     const mergedMap = new Map();
     for (const r of [...ownerReports, ...finderReports]) {
       if (!mergedMap.has(r.id)) mergedMap.set(r.id, r);
@@ -2419,6 +2465,10 @@ app.use((err, req, res, next) => {
       setFlash(req, "error", "File too large. Maximum size is 5MB.");
       return res.redirect("back");
     }
+  }
+  if (err?.message?.includes("Only image files are allowed")) {
+    setFlash(req, "error", err.message);
+    return res.redirect("back");
   }
   setFlash(req, "error", "An unexpected error occurred. Please try again.");
   res.redirect(req.session?.userId ? "/dashboard" : "/");

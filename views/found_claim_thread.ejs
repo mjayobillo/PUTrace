@@ -79,13 +79,18 @@
   }
 
   (function () {
+    // ── Real-time chat polling ──
+    // Polls the server every 2 seconds to check for new messages or status changes
+    // without requiring a full page reload (fake-realtime over regular HTTP).
     var thread = document.getElementById('found-claim-thread');
     var form = document.getElementById('found-claim-message-form');
     var closedNote = document.getElementById('found-claim-closed-note');
     var pollUrl = '/found-claims/<%= claim.id %>/poll';
     var previousCount = parseInt("<%= messages ? messages.length : 0 %>", 10) || 0;
-    var isPolling = false;
+    var isPolling = false; // Guard flag to prevent overlapping fetches
 
+    // Escapes special HTML characters to prevent XSS when injecting
+    // dynamic message content directly into the DOM via innerHTML.
     function escapeHtml(value) {
       return String(value || '')
         .replace(/&/g, '&amp;')
@@ -95,6 +100,7 @@
         .replace(/'/g, '&#39;');
     }
 
+    // Formats an ISO timestamp into a readable local time (e.g., "Mar 15, 3:22 PM").
     function formatDate(value) {
       return new Date(value).toLocaleString('en-US', {
         timeZone: 'Asia/Manila',
@@ -105,6 +111,7 @@
       });
     }
 
+    // Rebuilds the entire chat thread from the latest message list returned by the poll.
     function renderMessages(messages) {
       if (!thread) return;
       if (!messages || messages.length === 0) {
@@ -121,16 +128,20 @@
       }).join('');
     }
 
+    // Shows/hides the closed notice and the message form based on the claim status.
     function syncStatus(status) {
       var isClosed = status !== 'open';
       if (closedNote) closedNote.style.display = isClosed ? 'block' : 'none';
       if (form) form.style.display = isClosed ? 'none' : '';
     }
 
+    // Scrolls the chat thread to the bottom so the latest message is always visible.
     function stickToBottom() {
       if (thread) thread.scrollTop = thread.scrollHeight;
     }
 
+    // Main polling function: fetches the latest messages and claim status from the server.
+    // The isPolling guard ensures we don't send a new request before the previous one finishes.
     async function poll() {
       if (isPolling) return;
       isPolling = true;
@@ -151,7 +162,7 @@
     }
 
     stickToBottom();
-    window.setInterval(poll, 2000);
+    window.setInterval(poll, 2000); // Poll every 2 seconds for near-realtime updates
   })();
 </script>
 
